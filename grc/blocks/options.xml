@@ -98,6 +98,17 @@ else: self.stop(); self.wait()</callback>
 			<name>Prompt for Exit</name>
 			<key>prompt</key>
 		</option>
+		<option>
+			<name>Custom Main Function</name>
+			<key>custom</key>
+		</option>
+	</param>
+	<param>
+		<name>Custom Main Function</name>
+		<key>maincode</key>
+		<value>"    raw_input('Press Enter to quit: ')\n    tb.stop()\n"</value>
+		<type>string</type>
+		<hide>#if $run_options() == 'custom' then 'none' else 'all'#</hide>
 	</param>
 	<param>
 		<name>Run</name>

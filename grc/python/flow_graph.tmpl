@@ -351,9 +351,9 @@ if __name__ == '__main__':
             #else
     tb.start()
             #end if
-        #for $m in $monitors
+            #for $m in $monitors
     (tb.$m.get_id()).start()
-        #end for
+            #end for
     raw_input('Press Enter to quit: ')
     tb.stop()
         #elif $run_options == 'run'
@@ -362,10 +362,14 @@ if __name__ == '__main__':
             #else
     tb.start()
             #end if
+        #elif $run_options == 'custom'
+    tb.start()
+$flow_graph.get_option('maincode')
         #end if
         #for $m in $monitors
     (tb.$m.get_id()).start()
         #end for
     tb.wait()
     #end if
+    
 #end if
