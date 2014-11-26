@@ -21,6 +21,7 @@ import os
 import sys
 import subprocess
 import tempfile
+from distutils.spawn import find_executable
 from Cheetah.Template import Template
 import expr_utils
 from Constants import \
@@ -93,11 +94,12 @@ This is usually undesired. Consider removing the throttle block.''')
         #   python_exe = 'pythonw'
 
         #setup the command args to run
-        cmds = [python_exe, '-u', self.get_file_path()] #-u is unbuffered stdio
+        cmds = [python_exe, '-u', self.get_file_path()]  # -u is unbuffered stdio
 
-        #when in no gui mode on linux, use an xterm (looks nice)
-        if self._generate_options == 'no_gui' and 'linux' in sys.platform.lower():
-            cmds = [XTERM_EXECUTABLE, '-e'] + cmds
+        # when in no gui mode on linux, use a graphical terminal (looks nice)
+        xterm_executable = find_executable(XTERM_EXECUTABLE)
+        if self._generate_options == 'no_gui' and xterm_executable:
+            cmds = [xterm_executable, '-e'] + cmds
 
         p = subprocess.Popen(args=cmds, stdout=subprocess.PIPE, stderr=subprocess.STDOUT, shell=False, universal_newlines=True)
         return p
