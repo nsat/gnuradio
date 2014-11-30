@@ -65,7 +65,7 @@ CONTROL
 
 ## Build GNU Radio and create debian package
 # Install superset of required dependencies
-sudo apt-get install build-essential git cmake git-core autoconf automake g++ libfftw3-dev libcppunit-dev python-cheetah sdcc guile-2.0 ccache libgsl0-dev libusb-dev alsa-base libasound2 libasound2-dev python-scipy  libtool  python-dev swig pkg-config libboost1.48-all-dev libfftw3-dev libcppunit-dev libgsl0-dev libusb-dev sdcc libsdl1.2-dev python-wxgtk2.8 python-numpy python-cheetah python-lxml doxygen python-qt4 python-qwt5-qt4 libxi-dev libqt4-opengl-dev libqwt5-qt4-dev libfontconfig1-dev libxrender-dev sphinx-common python-gtk2 python-lxml libzeroc-ice34-dev libzmq-dev libqwt5-qt4-dev
+sudo apt-get install build-essential git cmake git-core autoconf automake g++ libfftw3-dev libcppunit-dev python-cheetah sdcc guile-2.0 ccache libgsl0-dev libusb-1.0-0 alsa-base libasound2 libasound2-dev python-scipy  libtool  python-dev swig pkg-config libboost1.48-all-dev libfftw3-dev libcppunit-dev libgsl0-dev libusb-dev sdcc libsdl1.2-dev python-wxgtk2.8 python-numpy python-cheetah python-lxml doxygen python-qt4 python-qwt5-qt4 libxi-dev libqt4-opengl-dev libqwt5-qt4-dev libfontconfig1-dev libxrender-dev sphinx-common python-gtk2 python-lxml libzeroc-ice34-dev libzmq-dev libqwt5-qt4-dev
 # Build and debinify
 cmake ..
 make
