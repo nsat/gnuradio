@@ -25,7 +25,12 @@ class Connection(_Connection, _GUIConnection):
 
     def __init__(self, **kwargs):
         _Connection.__init__(self, **kwargs)
-        _GUIConnection.__init__(self)
+        try:
+            _GUIConnection.__init__(self)
+        except:
+            # MERGE-ME-NOT
+            # grcc was failing unless an X connection was present
+            print "Unable to initialize GUI Connection -- ignoring"
 
     def is_msg(self):
         return self.get_source().get_type() == self.get_sink().get_type() == 'msg'
