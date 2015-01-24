@@ -28,6 +28,7 @@ class Connection(_Connection, _GUIConnection):
         try:
             _GUIConnection.__init__(self)
         except:
+            # MERGE-ME-NOT
             # grcc was failing unless an X connection was present
             print "Unable to initialize GUI Connection -- ignoring"
 
