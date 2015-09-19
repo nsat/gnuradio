@@ -31,6 +31,9 @@
 namespace gr {
   namespace blocks {
 
+    const int multiply_matrix_cc::TPP_SELECT_BY_MATRIX = 999;
+    const std::string multiply_matrix_cc::MSG_PORT_NAME_SET_A = "set_A";
+
     multiply_matrix_cc::sptr
     multiply_matrix_cc::make(std::vector<std::vector<gr_complex> > A, gr::block::tag_propagation_policy_t tag_propagation_policy)
     {
@@ -103,7 +106,7 @@ namespace gr {
         );
 
         for (size_t out_idx = 0; out_idx < noutput_ports; out_idx++) {
-          if (d_A[out_idx][in_idx] == 0) {
+          if (d_A[out_idx][in_idx] == std::complex<float>(0, 0)) {
             continue;
           }
           for (size_t i = 0; i < tags.size(); i++) {

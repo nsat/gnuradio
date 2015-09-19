@@ -17,78 +17,103 @@ along with this program; if not, write to the Free Software
 Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston, MA  02110-1301, USA
 """
 
+import sys
 import ConfigParser
-import os
+
+
+HEADER = """\
+# This contains only GUI settings for GRC and is not meant for users to edit.
+#
+# GRC settings not accessible through the GUI are in gnuradio.conf under
+# section [grc].
+
+"""
 
 _platform = None
-_config_parser = ConfigParser.ConfigParser()
+_config_parser = ConfigParser.SafeConfigParser()
 
-def file_extension(): return '.'+_platform.get_key()
+
+def file_extension():
+    return '.'+_platform.get_key()
+
 
 def load(platform):
     global _platform
     _platform = platform
-    #create sections
+    # create sections
     _config_parser.add_section('main')
     _config_parser.add_section('files_open')
-    try: _config_parser.read(_platform.get_prefs_file())
-    except: pass
+    try:
+        _config_parser.read(_platform.get_prefs_file())
+    except Exception as err:
+        print >> sys.stderr, err
+
+
 def save():
-    try: _config_parser.write(open(_platform.get_prefs_file(), 'w'))
-    except: pass
+    try:
+        with open(_platform.get_prefs_file(), 'w') as fp:
+            fp.write(HEADER)
+            _config_parser.write(fp)
+    except Exception as err:
+        print >> sys.stderr, err
+
+
+def entry(key, value=None, default=None):
+    if value is not None:
+        _config_parser.set('main', key, str(value))
+        result = value
+    else:
+        _type = type(default) if default is not None else str
+        getter = {
+            bool: _config_parser.getboolean,
+            int: _config_parser.getint,
+        }.get(_type, _config_parser.get)
+        try:
+            result = getter('main', key)
+        except ConfigParser.Error:
+            result = _type() if default is None else default
+    return result
+
 
 ###########################################################################
 # Special methods for specific program functionalities
 ###########################################################################
 
 def main_window_size(size=None):
-    if size is not None:
-        _config_parser.set('main', 'main_window_width', size[0])
-        _config_parser.set('main', 'main_window_height', size[1])
-    else:
-        try: return (
-            _config_parser.getint('main', 'main_window_width'),
-            _config_parser.getint('main', 'main_window_height'),
-        )
-        except: return (1, 1)
+    if size is None:
+        size = [None, None]
+    w = entry('main_window_width', size[0], default=1)
+    h = entry('main_window_height', size[1], default=1)
+    return w, h
 
-def file_open(file=None):
-    if file is not None: _config_parser.set('main', 'file_open', file)
-    else:
-        try: return _config_parser.get('main', 'file_open')
-        except: return ''
+
+def file_open(filename=None):
+    return entry('file_open', filename, default='')
+
 
 def files_open(files=None):
     if files is not None:
-        _config_parser.remove_section('files_open') #clear section
+        _config_parser.remove_section('files_open')  # clear section
         _config_parser.add_section('files_open')
-        for i, file in enumerate(files):
-            _config_parser.set('files_open', 'file_open_%d'%i, file)
-    else:
-        files = list()
-        i = 0
-        while True:
-            try: files.append(_config_parser.get('files_open', 'file_open_%d'%i))
-            except: return files
-            i = i + 1
+        for i, filename in enumerate(files):
+            _config_parser.set('files_open', 'file_open_%d' % i, filename)
 
-def reports_window_position(pos=None):
-    if pos is not None: _config_parser.set('main', 'reports_window_position', pos)
-    else:
-        try: return _config_parser.getint('main', 'reports_window_position') or 1 #greater than 0
-        except: return -1
-
-def blocks_window_position(pos=None):
-    if pos is not None: _config_parser.set('main', 'blocks_window_position', pos)
-    else:
-        try: return _config_parser.getint('main', 'blocks_window_position') or 1 #greater than 0
-        except: return -1
-
-def bool_entry(key, active=None, default=True):
-    if active is not None:
-        _config_parser.set('main', key, active)
     else:
         try:
-            return _config_parser.getboolean('main', key)
-        except:
-            return default
+            files = [value for name, value in _config_parser.items('files_open')
+                     if name.startswith('file_open_')]
+        except ConfigParser.Error:
+            files = []
+        return files
+
+
+def reports_window_position(pos=None):
+    return entry('reports_window_position', pos, default=-1) or 1
+
+
+def blocks_window_position(pos=None):
+    return entry('blocks_window_position', pos, default=-1) or 1
+
+
+def xterm_missing(cmd=None):
+    return entry('xterm_missing', cmd, default='INVALID_XTERM_SETTING')

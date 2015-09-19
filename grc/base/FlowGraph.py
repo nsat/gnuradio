@@ -18,10 +18,14 @@ Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston, MA  02110-1301, USA
 """
 
 import time
-from . import odict
-from Element import Element
+from operator import methodcaller
+from itertools import ifilter
+
 from .. gui import Messages
-from . Constants import FLOW_GRAPH_FILE_FORMAT_VERSION
+
+from . import odict
+from .Element import Element
+from .Constants import FLOW_GRAPH_FILE_FORMAT_VERSION
 
 
 class FlowGraph(Element):
@@ -78,9 +82,6 @@ class FlowGraph(Element):
                         bus_structure = block.form_bus_structure('sink');
 
                     if 'bus' in map(lambda a: a.get_type(), get_p_gui()):
-
-
-
                         if len(get_p_gui()) > len(bus_structure):
                             times = range(len(bus_structure), len(get_p_gui()));
                             for i in times:
@@ -99,8 +100,6 @@ class FlowGraph(Element):
                                 n = odict(n);
                                 port = block.get_parent().get_parent().Port(block=block, n=n, dir=direc);
                                 get_p().append(port);
-
-
 
         for child in self.get_children(): child.rewrite()
         refactor_bus_structure();
@@ -123,18 +122,24 @@ class FlowGraph(Element):
     ##############################################
     ## Access Elements
     ##############################################
-    def get_block(self, id): return filter(lambda b: b.get_id() == id, self.get_blocks())[0]
-    def get_blocks_unordered(self): return filter(lambda e: e.is_block(), self.get_elements())
+    def get_block(self, id):
+        for block in self.iter_blocks():
+            if block.get_id() == id:
+                return block
+        raise KeyError('No block with ID {0!r}'.format(id))
+
+    def iter_blocks(self):
+        return ifilter(methodcaller('is_block'), self.get_elements())
+
     def get_blocks(self):
-        blocks = self.get_blocks_unordered();
-        for i in range(len(blocks)):
-            if blocks[i].get_key() == 'variable':
-                blk = blocks[i];
-                blocks.remove(blk);
-                blocks.insert(1, blk);
-        return blocks;
-    def get_connections(self): return filter(lambda e: e.is_connection(), self.get_elements())
-    def get_children(self): return self.get_elements()
+        return list(self.iter_blocks())
+
+    def iter_connections(self):
+        return ifilter(methodcaller('is_connection'), self.get_elements())
+
+    def get_connections(self):
+        return list(self.iter_connections())
+
     def get_elements(self):
         """
         Get a list of all the elements.
@@ -150,14 +155,25 @@ class FlowGraph(Element):
             self._elements.remove(self._options_block)
         return self._elements
 
+    get_children = get_elements
+
     def get_enabled_blocks(self):
         """
-        Get a list of all blocks that are enabled.
+        Get a list of all blocks that are enabled and not bypassed.
 
         Returns:
             a list of blocks
         """
-        return filter(lambda b: b.get_enabled(), self.get_blocks())
+        return filter(methodcaller('get_enabled'), self.iter_blocks())
+
+    def get_bypassed_blocks(self):
+        """
+        Get a list of all blocks that are bypassed.
+
+        Returns:
+            a list of blocks
+        """
+        return filter(methodcaller('get_bypassed'), self.iter_blocks())
 
     def get_enabled_connections(self):
         """
@@ -166,7 +182,7 @@ class FlowGraph(Element):
         Returns:
             a list of connections
         """
-        return filter(lambda c: c.get_enabled(), self.get_connections())
+        return filter(methodcaller('get_enabled'), self.get_connections())
 
     def get_new_block(self, key):
         """
@@ -248,10 +264,17 @@ class FlowGraph(Element):
         Returns:
             a nested data odict
         """
+        # sort blocks and connections for nicer diffs
+        blocks = sorted(self.iter_blocks(), key=lambda b: (
+            b.get_key() != 'options',  # options to the front
+            not b.get_key().startswith('variable'),  # then vars
+            str(b)
+        ))
+        connections = sorted(self.get_connections(), key=str)
         n = odict()
         n['timestamp'] = self._timestamp
-        n['block'] = [block.export_data() for block in self.get_blocks()]
-        n['connection'] = [connection.export_data() for connection in self.get_connections()]
+        n['block'] = [b.export_data() for b in blocks]
+        n['connection'] = [c.export_data() for c in connections]
         instructions = odict({
             'created': self.get_parent().get_version_short(),
             'format': FLOW_GRAPH_FILE_FORMAT_VERSION,
@@ -293,11 +316,11 @@ class FlowGraph(Element):
                 block = self.get_new_block('dummy_block')
                 # Ugly ugly ugly
                 _initialize_dummy_block(block, block_n)
-                Messages.send_error_load('Block key "%s" not found in %s' % (key, self.get_parent()))
+                Messages.send_error_msg_load('Block key "%s" not found in %s' % (key, self.get_parent()))
 
             block.import_data(block_n)
         #build the connections
-        block_ids = map(lambda b: b.get_id(), self.get_blocks())
+        block_ids = map(methodcaller('get_id'), self.iter_blocks())
         for connection_n in connections_n:
             try:  # to make the connection
                 #get the block ids

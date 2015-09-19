@@ -17,16 +17,14 @@ along with this program; if not, write to the Free Software
 Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston, MA  02110-1301, USA
 """
 
-from Constants import SCROLL_PROXIMITY_SENSITIVITY, SCROLL_DISTANCE
-import Actions
-import Colors
-import Utils
-from Element import Element
-import pygtk
-pygtk.require('2.0')
-import gtk
 import random
-import Messages
+from itertools import chain
+from operator import methodcaller
+
+from . import Actions, Colors, Utils, Messages, Bars
+from .Constants import SCROLL_PROXIMITY_SENSITIVITY, SCROLL_DISTANCE
+from .Element import Element
+
 
 class FlowGraph(Element):
     """
@@ -54,25 +52,7 @@ class FlowGraph(Element):
         # current mouse hover element
         self.element_under_mouse = None
         #context menu
-        self._context_menu = gtk.Menu()
-        for action in [
-            Actions.BLOCK_CUT,
-            Actions.BLOCK_COPY,
-            Actions.BLOCK_PASTE,
-            Actions.ELEMENT_DELETE,
-            None,
-            Actions.BLOCK_ROTATE_CCW,
-            Actions.BLOCK_ROTATE_CW,
-            Actions.BLOCK_ENABLE,
-            Actions.BLOCK_DISABLE,
-            None,
-            Actions.BLOCK_CREATE_HIER,
-            Actions.OPEN_HIER,
-            Actions.BUSSIFY_SOURCES,
-            Actions.BUSSIFY_SINKS,
-            None,
-            Actions.BLOCK_PARAM_MODIFY
-        ]: self._context_menu.append(action.create_menu_item() if action else gtk.SeparatorMenuItem())
+        self._context_menu = Bars.ContextMenu()
         self.get_context_menu = lambda: self._context_menu
 
     ###########################################################################
@@ -228,9 +208,21 @@ class FlowGraph(Element):
         """
         changed = False
         for selected_block in self.get_selected_blocks():
-            if selected_block.get_enabled() != enable:
-                selected_block.set_enabled(enable)
-                changed = True
+            if selected_block.set_enabled(enable): changed = True
+        return changed
+
+    def bypass_selected(self):
+        """
+        Bypass the selected blocks.
+
+        Args:
+            None
+        Returns:
+            true if changed
+        """
+        changed = False
+        for selected_block in self.get_selected_blocks():
+            if selected_block.set_bypassed(): changed = True
         return changed
 
     def move_selected(self, delta_coordinate):
@@ -297,6 +289,11 @@ class FlowGraph(Element):
         #draw the background
         gc.set_foreground(Colors.FLOWGRAPH_BACKGROUND_COLOR)
         window.draw_rectangle(gc, True, 0, 0, W, H)
+        # draw comments first
+        if Actions.TOGGLE_SHOW_BLOCK_COMMENTS.get_active():
+            for block in self.iter_blocks():
+                if block.get_enabled():
+                    block.draw_comment(gc, window)
         #draw multi select rectangle
         if self.mouse_pressed and (not self.get_selected_elements() or self.get_ctrl_mask()):
             #coordinates
@@ -311,8 +308,10 @@ class FlowGraph(Element):
             gc.set_foreground(Colors.BORDER_COLOR)
             window.draw_rectangle(gc, False, x, y, w, h)
         #draw blocks on top of connections
-        for element in self.get_connections() + self.get_blocks():
-            if Actions.TOGGLE_HIDE_DISABLED_BLOCKS.get_active() and not element.get_enabled():
+        hide_disabled_blocks = Actions.TOGGLE_HIDE_DISABLED_BLOCKS.get_active()
+        blocks = sorted(self.iter_blocks(), key=methodcaller('get_enabled'))
+        for element in chain(self.iter_connections(), blocks):
+            if hide_disabled_blocks and not element.get_enabled():
                 continue  # skip hidden disabled blocks and connections
             element.draw(gc, window)
         #draw selected blocks on top of selected connections
