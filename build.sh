@@ -162,6 +162,7 @@ sphinx-common
 python-gtk2
 python-lxml
 libzmq-dev
+libcanberra-gtk-module
 "
 
     local rel_pkgs="${pkgs_new}"
