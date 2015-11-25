@@ -192,9 +192,6 @@ function main(){
     local base_dir="$(base_dir)"
     local build_dir="${base_dir}/build"
     
-    # this is now a controlled environment, so we don't need this anymore
-    # check_uhd
-
     pushd "${base_dir}"
 
     check_dirty
