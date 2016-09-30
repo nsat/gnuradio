@@ -50,6 +50,9 @@ namespace gr {
     // Wire list of gr::block together in new flat_flowgraph
     void setup_connections();
 
+    // hotfix for dynamic reconfiguration of message connections
+    void setup_msg_connections();
+
     // Merge applicable connections from existing flat flowgraph
     void merge_connections(flat_flowgraph_sptr sfg);
 
