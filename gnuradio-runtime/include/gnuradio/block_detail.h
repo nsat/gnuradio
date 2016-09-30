@@ -100,6 +100,13 @@ namespace gr {
     // Return the number of items written on output stream which_output
     uint64_t nitems_written(unsigned int which_output);
 
+    // sets nitems_read and nitems_written to 0 for all input/output
+    // buffers.
+    void reset_nitem_counters();
+
+    // Clears all tags from the input buffers.
+    void clear_tags();
+
     /*!
      * \brief  Adds a new tag to the given output stream.
      *
@@ -234,6 +241,8 @@ namespace gr {
     tpb_detail d_tpb;	// used by thread-per-block scheduler
     int d_produce_or;
 
+    int consumed() const;
+
     // ----------------------------------------------------------------------------
 
   private:
@@ -242,6 +251,7 @@ namespace gr {
     std::vector<buffer_reader_sptr> d_input;
     std::vector<buffer_sptr>        d_output;
     bool                            d_done;
+    int                             d_consumed;
 
     // Performance counters
     float d_ins_noutput_items;

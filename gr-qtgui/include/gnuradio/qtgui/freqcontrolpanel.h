@@ -44,7 +44,9 @@ public:
 
 public slots:
   void notifyAvgSlider(int val);
+  void setFFTAverage(float val);
   void toggleGrid(bool en);
+  void toggleAxisLabels(bool en);
   void toggleMaxHold(bool en);
   void toggleMinHold(bool en);
 
@@ -76,6 +78,7 @@ private:
   QVBoxLayout *d_axes_layout;
 
   QCheckBox *d_grid_check;
+  QCheckBox *d_axislabels_check;
   QHBoxLayout *d_yrange_layout;
   QLabel *d_yrange_label;
   QPushButton *d_yrange_plus;

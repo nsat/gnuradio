@@ -1,6 +1,6 @@
 /* -*- c++ -*- */
 /*
- * Copyright 2011-2013 Free Software Foundation, Inc.
+ * Copyright 2011-2013,2015 Free Software Foundation, Inc.
  *
  * This file is part of GNU Radio
  *
@@ -72,6 +72,9 @@ namespace gr {
       void _test_trigger_norm(int nitems, gr_vector_const_void_star inputs);
       bool _test_trigger_slope(const gr_complex *in) const;
 
+      // Handles message input port for displaying PDU samples.
+      void handle_pdus(pmt::pmt_t msg);
+
     public:
       time_sink_c_impl(int size, double samp_rate,
 		       const std::string &name,
@@ -127,6 +130,7 @@ namespace gr {
       void enable_semilogy(bool en);
       void enable_control_panel(bool en);
       void enable_tags(int which, bool en);
+      void enable_axis_labels(bool en);
       void disable_legend();
 
       void reset();

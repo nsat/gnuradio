@@ -97,7 +97,8 @@ class PropsDialog(gtk.Dialog):
             self._params_boxes.append((tab, label, vbox))
 
         # Docs for the block
-        self._docs_text_display = SimpleTextDisplay()
+        self._docs_text_display = doc_view = SimpleTextDisplay()
+        doc_view.get_buffer().create_tag('b', weight=pango.WEIGHT_BOLD)
         self._docs_box = gtk.ScrolledWindow()
         self._docs_box.set_policy(gtk.POLICY_AUTOMATIC, gtk.POLICY_AUTOMATIC)
         self._docs_box.add_with_viewport(self._docs_text_display)
@@ -127,7 +128,7 @@ class PropsDialog(gtk.Dialog):
 
         # Connect events
         self.connect('key-press-event', self._handle_key_press)
-        self.connect('show', self._update_gui)
+        self.connect('show', self.update_gui)
         self.connect('response', self._handle_response)
         self.show_all()  # show all (performs initial gui update)
 
@@ -158,12 +159,12 @@ class PropsDialog(gtk.Dialog):
         # update for the block
         self._block.rewrite()
         self._block.validate()
-        self._update_gui()
+        self.update_gui()
 
     def _activate_apply(self, *args):
         self.set_response_sensitive(gtk.RESPONSE_APPLY, True)
 
-    def _update_gui(self, *args):
+    def update_gui(self, widget=None, force=False):
         """
         Repopulate the parameters boxes (if changed).
         Update all the input parameters.
@@ -173,7 +174,7 @@ class PropsDialog(gtk.Dialog):
         Hide the box if there are no docs.
         """
         # update the params box
-        if self._params_changed():
+        if force or self._params_changed():
             # hide params box before changing
             for tab, label, vbox in self._params_boxes:
                 vbox.hide_all()
@@ -200,9 +201,42 @@ class PropsDialog(gtk.Dialog):
         messages = '\n\n'.join(self._block.get_error_messages())
         self._error_messages_text_display.set_text(messages)
         # update the docs box
-        self._docs_text_display.set_text(self._block.get_doc())
+        self._update_docs_page()
         # update the generated code
         self._update_generated_code_page()
+
+    def _update_docs_page(self):
+        """Show documentation from XML and try to display best matching docstring"""
+        buffer = self._docs_text_display.get_buffer()
+        buffer.delete(buffer.get_start_iter(), buffer.get_end_iter())
+        pos = buffer.get_end_iter()
+
+        docstrings = self._block.get_doc()
+        if not docstrings:
+            return
+
+        # show documentation string from block xml
+        from_xml = docstrings.pop('', '')
+        for line in from_xml.splitlines():
+            if line.lstrip() == line and line.endswith(':'):
+                buffer.insert_with_tags_by_name(pos, line + '\n', 'b')
+            else:
+                buffer.insert(pos, line + '\n')
+        if from_xml:
+            buffer.insert(pos, '\n')
+
+        # if given the current parameters an exact match can be made
+        block_constructor = self._block.get_make().rsplit('.', 2)[-1]
+        block_class = block_constructor.partition('(')[0].strip()
+        if block_class in docstrings:
+            docstrings = {block_class: docstrings[block_class]}
+
+        # show docstring(s) extracted from python sources
+        for cls_name, docstring in docstrings.iteritems():
+            buffer.insert_with_tags_by_name(pos, cls_name + '\n', 'b')
+            buffer.insert(pos, docstring + '\n\n')
+        pos.backward_chars(2)
+        buffer.delete(pos, buffer.get_end_iter())
 
     def _update_generated_code_page(self):
         if not self._code_text_display:
@@ -210,6 +244,14 @@ class PropsDialog(gtk.Dialog):
 
         buffer = self._code_text_display.get_buffer()
         block = self._block
+        key = block.get_key()
+
+        if key == 'epy_block':
+            src = block.get_param('_source_code').get_value()
+        elif key == 'epy_module':
+            src = block.get_param('source_code').get_value()
+        else:
+            src = ''
 
         def insert(header, text):
             if not text:
@@ -219,9 +261,11 @@ class PropsDialog(gtk.Dialog):
 
         buffer.delete(buffer.get_start_iter(), buffer.get_end_iter())
         insert('# Imports\n', '\n'.join(block.get_imports()))
-        if block.get_key().startswith('variable'):
+        if key.startswith('variable'):
             insert('\n\n# Variables\n', block.get_var_make())
         insert('\n\n# Blocks\n', block.get_make())
+        if src:
+            insert('\n\n# External Code ({}.py)\n'.format(block.get_id()), src)
 
     def _handle_key_press(self, widget, event):
         """

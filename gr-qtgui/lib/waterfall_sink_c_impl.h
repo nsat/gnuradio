@@ -1,6 +1,6 @@
 /* -*- c++ -*- */
 /*
- * Copyright 2012 Free Software Foundation, Inc.
+ * Copyright 2012,2015 Free Software Foundation, Inc.
  *
  * This file is part of GNU Radio
  *
@@ -132,6 +132,7 @@ namespace gr {
       void enable_menu(bool en);
       void enable_grid(bool en);
       void disable_legend();
+      void enable_axis_labels(bool en);
 
       int work(int noutput_items,
 	       gr_vector_const_void_star &input_items,

@@ -47,6 +47,7 @@ namespace gr {
       std::vector<kernel::fir_filter_ccf*> d_diff_filters;
       std::vector< std::vector<float> >    d_taps;
       std::vector< std::vector<float> >    d_dtaps;
+      std::vector<float>                   d_updated_taps;
 
       float d_k;
       float d_rate;
@@ -57,6 +58,8 @@ namespace gr {
       int   d_osps;
       float d_error;
       int   d_out_idx;
+
+      uint64_t d_old_in, d_new_in, d_last_out;
 
       void create_diff_taps(const std::vector<float> &newtaps,
 			    std::vector<float> &difftaps);
@@ -73,8 +76,10 @@ namespace gr {
       void setup_rpc();
 
       void update_gains();
-      
+
       void forecast(int noutput_items, gr_vector_int &ninput_items_required);
+
+      void update_taps(const std::vector<float> &taps);
 
       void set_taps(const std::vector<float> &taps,
 		    std::vector< std::vector<float> > &ourtaps,

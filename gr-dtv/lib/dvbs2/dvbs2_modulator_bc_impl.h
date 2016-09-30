@@ -1,6 +1,6 @@
 /* -*- c++ -*- */
 /* 
- * Copyright 2015 Free Software Foundation, Inc.
+ * Copyright 2015,2016 Free Software Foundation, Inc.
  * 
  * This is free software; you can redistribute it and/or modify
  * it under the terms of the GNU General Public License as published by
@@ -31,6 +31,8 @@ namespace gr {
     {
      private:
       int signal_constellation;
+      int signal_interpolation;
+      gr_complex m_bpsk[2][2];
       gr_complex m_qpsk[4];
       gr_complex m_8psk[8];
       gr_complex m_16apsk[16];
@@ -40,7 +42,7 @@ namespace gr {
       gr_complex m_256apsk[256];
 
      public:
-      dvbs2_modulator_bc_impl(dvb_framesize_t framesize, dvb_code_rate_t rate, dvb_constellation_t constellation);
+      dvbs2_modulator_bc_impl(dvb_framesize_t framesize, dvb_code_rate_t rate, dvb_constellation_t constellation, dvbs2_interpolation_t interpolation);
       ~dvbs2_modulator_bc_impl();
 
       void forecast (int noutput_items, gr_vector_int &ninput_items_required);

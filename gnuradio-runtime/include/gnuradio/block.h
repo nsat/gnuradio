@@ -80,7 +80,9 @@ namespace gr {
      * History is the number of x_i's that are examined to produce one y_i.
      * This comes in handy for FIR filters, where we use history to
      * ensure that our input contains the appropriate "history" for the
-     * filter. History should be equal to the number of filter taps.
+     * filter. History should be equal to the number of filter taps. First
+     * history samples (when there are no previous samples) are
+     * initialized with zeroes.
      */
     unsigned history() const;
     void  set_history(unsigned history);
@@ -169,7 +171,7 @@ namespace gr {
      * \brief Called to enable drivers, etc for i/o devices.
      *
      * This allows a block to enable an associated driver to begin
-     * transfering data just before we start to execute the scheduler.
+     * transferring data just before we start to execute the scheduler.
      * The end result is that this reduces latency in the pipeline
      * when dealing with audio devices, usrps, etc.
      */
@@ -341,7 +343,7 @@ namespace gr {
      *
      * Use this value to clear the 'is_set' flag so the scheduler will
      * ignore this. Use the set_max_noutput_items(m) call to both set
-     * a new value for max_noutput_items and to reenable its use in
+     * a new value for max_noutput_items and to re-enable its use in
      * the scheduler.
      */
     void unset_max_noutput_items();
@@ -409,7 +411,7 @@ namespace gr {
     long min_output_buffer(size_t i);
 
     /*!
-     * \brief Request limit on the mininum buffer size on all output
+     * \brief Request limit on the minimum buffer size on all output
      * ports.
      *
      * \details

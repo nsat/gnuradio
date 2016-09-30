@@ -1,6 +1,6 @@
 <?xml version="1.0"?>
 <!--
- Copyright 2011-2015 Free Software Foundation, Inc.
+ Copyright 2011-2016 Free Software Foundation, Inc.
 
  This file is part of GNU Radio
 
@@ -26,7 +26,7 @@
 ###################################################
  -->
 <cat>
-  <name></name> <!-- Blank for Root Name -->
+  <name>[Core]</name>
   <cat>
     <name>Coding</name>
     <block>digital_additive_scrambler_bb</block>
@@ -48,17 +48,11 @@
   <cat>
     <name>Modulators</name>
     <block>digital_cpmmod_bc</block>
-    <block>digital_dxpsk_mod</block>
-    <block>digital_dxpsk_demod</block>
     <block>digital_gfsk_mod</block>
     <block>digital_gfsk_demod</block>
     <block>digital_gmskmod_bc</block>
     <block>digital_gmsk_mod</block>
     <block>digital_gmsk_demod</block>
-    <block>digital_psk_mod</block>
-    <block>digital_psk_demod</block>
-    <block>digital_qam_mod</block>
-    <block>digital_qam_demod</block>
     <block>digital_constellation_modulator</block>
     <block>digital_constellation_receiver_cb</block>
     <block>variable_constellation</block>
@@ -72,6 +66,10 @@
     <block>digital_crc32_bb</block>
     <block>digital_crc32_async_bb</block>
     <block>digital_framer_sink_1</block>
+    <block>variable_header_format_default</block>
+    <block>digital_protocol_formatter_async</block>
+    <block>digital_protocol_formatter_bb</block>
+    <block>digital_protocol_parser_b</block>
     <block>digital_header_payload_demux</block>
     <block>digital_packet_headergenerator_bb</block>
     <block>digital_packet_headergenerator_bb_default</block>
@@ -122,7 +120,6 @@
     <block>digital_pfb_clock_sync_xxx</block>
     <block>digital_pn_correlator_cc</block>
     <block>digital_corr_est_cc</block>
-    <block>digital_correlate_and_sync_cc</block>
   </cat>
   <cat>
     <name>Waveform Generators</name>

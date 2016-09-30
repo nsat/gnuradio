@@ -128,6 +128,23 @@ namespace gr {
       d_started = true;
     }
 
+    socket_pdu_impl::~socket_pdu_impl()
+    {
+      stop();
+    }
+
+    bool
+    socket_pdu_impl::stop()
+    {
+      if (d_started) {
+        d_io_service.stop();
+        d_thread.interrupt();
+        d_thread.join();
+      }
+      d_started = false;
+      return true;
+    }
+
     void
     socket_pdu_impl::handle_tcp_read(const boost::system::error_code& error, size_t bytes_transferred)
     {
@@ -179,7 +196,7 @@ namespace gr {
     socket_pdu_impl::tcp_client_send(pmt::pmt_t msg)
     {
       pmt::pmt_t vector = pmt::cdr(msg);
-      size_t len = pmt::length(vector);
+      size_t len = pmt::blob_length(vector);
       size_t offset = 0;
       std::vector<char> txbuf(std::min(len, d_rxbuf.size()));
       while (offset < len) {
@@ -197,7 +214,7 @@ namespace gr {
         return;
 
       pmt::pmt_t vector = pmt::cdr(msg);
-      size_t len = pmt::length(vector);
+      size_t len = pmt::blob_length(vector);
       size_t offset = 0;
       std::vector<char> txbuf(std::min(len, d_rxbuf.size()));
       while (offset < len) {

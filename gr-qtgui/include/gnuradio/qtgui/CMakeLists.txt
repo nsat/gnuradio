@@ -38,6 +38,7 @@ install(FILES
   histogram_sink_f.h
   histogramdisplayform.h
   HistogramDisplayPlot.h
+  edit_box_msg.h
   number_sink.h
   numberdisplayform.h
   plot_raster.h
@@ -45,8 +46,6 @@ install(FILES
   qtgui_types.h
   sink_c.h
   sink_f.h
-  spectrumdisplayform.h
-  SpectrumGUIClass.h
   spectrumUpdateEvents.h
   timedisplayform.h
   timecontrolpanel.h

@@ -25,6 +25,8 @@
 #endif
 
 #include <gnuradio/io_signature.h>
+#include <boost/thread/thread.hpp>
+#include <boost/date_time/posix_time/posix_time.hpp>
 #include "req_msg_source_impl.h"
 #include "tag_headers.h"
 
@@ -87,7 +89,7 @@ namespace gr {
       while(!d_finished){
         //std::cout << "readloop\n";
 
-        zmq::pollitem_t itemsout[] = { { *d_socket, 0, ZMQ_POLLOUT, 0 } };
+        zmq::pollitem_t itemsout[] = { { static_cast<void *>(*d_socket), 0, ZMQ_POLLOUT, 0 } };
         zmq::poll(&itemsout[0], 1, d_timeout);
 
         //  If we got a reply, process
@@ -99,7 +101,7 @@ namespace gr {
           d_socket->send(request);
         }
 
-        zmq::pollitem_t items[] = { { *d_socket, 0, ZMQ_POLLIN, 0 } };
+        zmq::pollitem_t items[] = { { static_cast<void *>(*d_socket), 0, ZMQ_POLLIN, 0 } };
         zmq::poll (&items[0], 1, d_timeout);
 
         //  If we got a reply, process
@@ -114,7 +116,7 @@ namespace gr {
           message_port_pub(pmt::mp("out"), m);
 
         } else {
-          usleep(100);
+          boost::this_thread::sleep(boost::posix_time::microseconds(100));
         }
       }
     }

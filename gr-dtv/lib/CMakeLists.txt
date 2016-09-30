@@ -1,4 +1,4 @@
-# Copyright 2014,2015 Free Software Foundation, Inc.
+# Copyright 2014,2015,2016 Free Software Foundation, Inc.
 #
 # This file is part of GNU Radio
 #
@@ -38,27 +38,9 @@ if(ENABLE_GR_CTRLPORT)
 endif(ENABLE_GR_CTRLPORT)
 
 ########################################################################
-# Generate viterbi mux source
-# http://www.vtk.org/Wiki/CMake_Cross_Compiling#Using_executables_in_the_build_created_during_the_build
-########################################################################
-if(NOT CMAKE_CROSSCOMPILING)
-  add_executable(atsc_viterbi_gen atsc/atsc_viterbi_gen.cc)
-  export(TARGETS atsc_viterbi_gen APPEND FILE ${EXPORT_FILE})
-endif()
-
-set(atsc_viterbi_mux_cc ${CMAKE_CURRENT_BINARY_DIR}/atsc_viterbi_mux.cc)
-
-add_custom_command(
-    OUTPUT ${atsc_viterbi_mux_cc}
-    DEPENDS atsc_viterbi_gen
-    COMMAND atsc_viterbi_gen -o ${atsc_viterbi_mux_cc}
-)
-
-########################################################################
 # Setup library
 ########################################################################
 list(APPEND dtv_sources
-  ${atsc_viterbi_mux_cc}
   atsc/atsc_deinterleaver_impl.cc
   atsc/atsc_depad_impl.cc
   atsc/atsc_derandomizer_impl.cc
@@ -95,7 +77,6 @@ list(APPEND dtv_sources
   dvbs2/dvbs2_modulator_bc_impl.cc
   dvbs2/dvbs2_physical_cc_impl.cc
   dvbt/dvbt_energy_dispersal_impl.cc
-  dvbt/dvbt_reed_solomon.cc
   dvbt/dvbt_reed_solomon_enc_impl.cc
   dvbt/dvbt_convolutional_interleaver_impl.cc
   dvbt/dvbt_configure.cc
@@ -104,6 +85,19 @@ list(APPEND dtv_sources
   dvbt/dvbt_symbol_inner_interleaver_impl.cc
   dvbt/dvbt_map_impl.cc
   dvbt/dvbt_reference_signals_impl.cc
+  dvbt/dvbt_ofdm_sym_acquisition_impl.cc
+  dvbt/dvbt_demod_reference_signals_impl.cc
+  dvbt/dvbt_demap_impl.cc
+  dvbt/dvbt_bit_inner_deinterleaver_impl.cc
+  dvbt/dvbt_viterbi_decoder_impl.cc
+  dvbt/dvbt_convolutional_deinterleaver_impl.cc
+  dvbt/dvbt_reed_solomon_dec_impl.cc
+  dvbt/dvbt_energy_descramble_impl.cc
+  catv/catv_transport_framing_enc_bb_impl.cc
+  catv/catv_reed_solomon_enc_bb_impl.cc
+  catv/catv_randomizer_bb_impl.cc
+  catv/catv_frame_sync_enc_bb_impl.cc
+  catv/catv_trellis_enc_bb_impl.cc
 )
 
 if(ENABLE_GR_CTRLPORT)
@@ -118,6 +112,29 @@ list(APPEND dtv_libs
     gnuradio-fec
     ${VOLK_LIBRARIES}
 )
+
+include (CheckCCompilerFlag)
+if (MSVC)
+	# 64-bit MSVC always supports SSE2 
+	if (CMAKE_SIZEOF_VOID_P EQUAL 8)
+		set(SSE2_SUPPORTED true)
+	else ()
+		CHECK_C_COMPILER_FLAG ("/arch:SSE2" SSE2_SUPPORTED)
+	endif(CMAKE_SIZEOF_VOID_P EQUAL 8)
+else ()
+	CHECK_C_COMPILER_FLAG ("-msse2" SSE2_SUPPORTED)
+endif(MSVC)
+
+if(SSE2_SUPPORTED)
+	if (NOT MSVC)
+		set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -msse2")
+	else ()
+		if (CMAKE_SIZEOF_VOID_P EQUAL 4)
+			set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} /arch:SSE2")
+		endif ()
+	endif ()
+    ADD_DEFINITIONS(-DDTV_SSE2)
+endif(SSE2_SUPPORTED)
 
 #Add Windows DLL resource file if using MSVC
 if(MSVC)

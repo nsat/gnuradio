@@ -110,14 +110,22 @@ namespace gr {
   void
   block_detail::consume(int which_input, int how_many_items)
   {
+    d_consumed = how_many_items;
     if(how_many_items > 0) {
       input(which_input)->update_read_pointer(how_many_items);
     }
   }
 
+  int
+  block_detail::consumed() const
+  {
+    return d_consumed;
+  }
+
   void
   block_detail::consume_each(int how_many_items)
   {
+    d_consumed = how_many_items;
     if(how_many_items > 0) {
       for(int i = 0; i < ninputs (); i++) {
         d_input[i]->update_read_pointer(how_many_items);
@@ -159,6 +167,26 @@ namespace gr {
     if(which_output >= d_noutputs)
       throw std::invalid_argument ("block_detail::n_output_items");
     return d_output[which_output]->nitems_written();
+  }
+
+  void
+  block_detail::reset_nitem_counters()
+  {
+    for(unsigned int i = 0; i < d_ninputs; i++) {
+      d_input[i]->reset_nitem_counter();
+    }
+    for(unsigned int o = 0; o < d_noutputs; o++) {
+      d_output[o]->reset_nitem_counter();
+    }
+  }
+
+  void
+  block_detail::clear_tags()
+  {
+    for(unsigned int i = 0; i < d_ninputs; i++) {
+      uint64_t max_time = 0xFFFFFFFFFFFFFFFF; // from now to the end of time
+      d_input[i]->buffer()->prune_tags(max_time);
+    }
   }
 
   void

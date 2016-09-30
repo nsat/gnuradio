@@ -25,6 +25,7 @@ include_directories(
     ${CMAKE_CURRENT_BINARY_DIR}
     ${GR_FFT_INCLUDE_DIRS}
     ${GNURADIO_RUNTIME_INCLUDE_DIRS}
+    ${VOLK_INCLUDE_DIRS}
     ${Boost_INCLUDE_DIRS}
     ${FFTW3F_INCLUDE_DIRS}
 )
@@ -56,6 +57,7 @@ endif(ENABLE_GR_CTRLPORT)
 
 list(APPEND fft_libs
     gnuradio-runtime
+    ${VOLK_LIBRARIES}
     ${Boost_LIBRARIES}
     ${FFTW3F_LIBRARIES}
 )

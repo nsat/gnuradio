@@ -1,6 +1,6 @@
 /* -*- c++ -*- */
 /*
- * Copyright 2007,2013 Free Software Foundation, Inc.
+ * Copyright 2015 Free Software Foundation, Inc.
  *
  * This file is part of GNU Radio
  *
@@ -94,7 +94,9 @@ namespace gr {
 
     block_sptr grblock = cast_to_block_sptr(block);
     if(!grblock)
-      throw std::runtime_error("allocate_block_detail found non-gr::block");
+      throw std::runtime_error(
+        (boost::format("allocate_block_detail found non-gr::block (%s)")%
+        block->alias()).str());
 
     if(FLAT_FLOWGRAPH_DEBUG)
       std::cout << "Creating block detail for " << block << std::endl;
@@ -175,6 +177,13 @@ namespace gr {
     catch(std::bad_alloc&) {
       b = make_buffer(nitems, item_size, grblock);
     }
+
+    // Set the max noutput items size here to make sure it's always
+    // set in the block and available in the start() method.
+    // But don't overwrite if the user has set this externally.
+    if(!grblock->is_set_max_noutput_items())
+      grblock->set_max_noutput_items(nitems);
+
     return b;
   }
 
@@ -223,9 +232,10 @@ namespace gr {
           std::cout << "merge: allocating new detail for block " << (*p) << std::endl;
         block->set_detail(allocate_block_detail(block));
       }
-      else
+      else {
         if(FLAT_FLOWGRAPH_DEBUG)
           std::cout << "merge: reusing original detail for block " << (*p) << std::endl;
+      }
     }
 
     // Calculate the old edges that will be going away, and clear the
@@ -309,6 +319,9 @@ namespace gr {
       // Now deal with the fact that the block details might have
       // changed numbers of inputs and outputs vs. in the old
       // flowgraph.
+
+      block->detail()->reset_nitem_counters();
+      block->detail()->clear_tags();
     }
   }
 
@@ -318,11 +331,11 @@ namespace gr {
     const int alignment = volk_get_alignment();
     for(int i = 0; i < block->detail()->ninputs(); i++) {
       void *r = (void*)block->detail()->input(i)->read_pointer();
-      unsigned long int ri = (unsigned long int)r % alignment;
+      uintptr_t ri = (uintptr_t)r % alignment;
       //std::cerr << "reader: " << r << "  alignment: " << ri << std::endl;
       if(ri != 0) {
         size_t itemsize = block->detail()->input(i)->get_sizeof_item();
-        block->detail()->input(i)->update_read_pointer(alignment-ri/itemsize);
+        block->detail()->input(i)->update_read_pointer((alignment-ri)/itemsize);
       }
       block->set_unaligned(0);
       block->set_is_unaligned(false);
@@ -330,11 +343,11 @@ namespace gr {
 
     for(int i = 0; i < block->detail()->noutputs(); i++) {
       void *w = (void*)block->detail()->output(i)->write_pointer();
-      unsigned long int wi = (unsigned long int)w % alignment;
+      uintptr_t wi = (uintptr_t)w % alignment;
       //std::cerr << "writer: " << w << "  alignment: " << wi << std::endl;
       if(wi != 0) {
         size_t itemsize = block->detail()->output(i)->get_sizeof_item();
-        block->detail()->output(i)->update_write_pointer(alignment-wi/itemsize);
+        block->detail()->output(i)->update_write_pointer((alignment-wi)/itemsize);
       }
       block->set_unaligned(0);
       block->set_is_unaligned(false);
@@ -415,6 +428,23 @@ namespace gr {
   }
 
   void
+  flat_flowgraph::clear_hier()
+  {
+    if(FLAT_FLOWGRAPH_DEBUG)
+      std::cout << "Clear_hier()" << std::endl;
+    for(size_t i=0; i<d_msg_edges.size(); i++) {
+      if(FLAT_FLOWGRAPH_DEBUG)
+        std::cout << "edge: " << d_msg_edges[i].src() << "-->" << d_msg_edges[i].dst() << std::endl;
+      if(d_msg_edges[i].src().is_hier() || d_msg_edges[i].dst().is_hier()){
+        if(FLAT_FLOWGRAPH_DEBUG)
+          std::cout << "is hier" << std::endl;
+        d_msg_edges.erase(d_msg_edges.begin() + i);
+        i--;
+      }
+    }
+  }
+
+  void
   flat_flowgraph::replace_endpoint(const msg_endpoint &e, const msg_endpoint &r, bool is_src)
   {
     size_t n_replr(0);
@@ -425,7 +455,7 @@ namespace gr {
         if(d_msg_edges[i].src() == e) {
           if(FLAT_FLOWGRAPH_DEBUG)
             std::cout << boost::format("flat_flowgraph::replace_endpoint() flattening to ( %s, %s )\n") \
-              % r.block()% d_msg_edges[i].dst().block();
+              % r% d_msg_edges[i].dst();
           d_msg_edges.push_back( msg_edge(r, d_msg_edges[i].dst() ) );
           n_replr++;
         }
@@ -434,7 +464,7 @@ namespace gr {
         if(d_msg_edges[i].dst() == e) {
           if(FLAT_FLOWGRAPH_DEBUG)
             std::cout << boost::format("flat_flowgraph::replace_endpoint() flattening to ( %s, %s )\n") \
-              % r.block()% d_msg_edges[i].dst().block();
+              % r% d_msg_edges[i].src();
           d_msg_edges.push_back( msg_edge(d_msg_edges[i].src(), r ) );
           n_replr++;
         }

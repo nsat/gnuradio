@@ -1,6 +1,6 @@
 /* -*- c++ -*- */
 /*
- * Copyright 2013 Free Software Foundation, Inc.
+ * Copyright 2013,2015 Free Software Foundation, Inc.
  *
  * This file is part of GNU Radio
  *
@@ -54,6 +54,9 @@ namespace gr {
 
       void npoints_resize();
 
+      // Handles message input port for displaying PDU samples.
+      void handle_pdus(pmt::pmt_t msg);
+
     public:
       histogram_sink_f_impl(int size, int bins,
                             double xmin, double xmax,
@@ -85,6 +88,7 @@ namespace gr {
       void set_line_alpha(int which, double alpha);
       void set_nsamps(const int newsize);
       void set_bins(const int bins);
+      void enable_axis_labels(bool en);
 
       std::string title();
       std::string line_label(int which);

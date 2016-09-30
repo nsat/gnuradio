@@ -33,12 +33,13 @@ try:
     PARAM_ENTRY_TEXT_COLOR = get_color('black')
     ENTRYENUM_CUSTOM_COLOR = get_color('#EEEEEE')
     #flow graph color constants
-    FLOWGRAPH_BACKGROUND_COLOR = get_color('#FFF9FF')
+    FLOWGRAPH_BACKGROUND_COLOR = get_color('#FFFFFF')
     COMMENT_BACKGROUND_COLOR = get_color('#F3F3F3')
+    FLOWGRAPH_EDGE_COLOR = COMMENT_BACKGROUND_COLOR
     #block color constants
     BLOCK_ENABLED_COLOR = get_color('#F1ECFF')
     BLOCK_DISABLED_COLOR = get_color('#CCCCCC')
-    BLOCK_BYPASSED_COLOR = get_color('#FFFFE6')
+    BLOCK_BYPASSED_COLOR = get_color('#F4FF81')
     #connection color constants
     CONNECTION_ENABLED_COLOR = get_color('black')
     CONNECTION_DISABLED_COLOR = get_color('#BBBBBB')

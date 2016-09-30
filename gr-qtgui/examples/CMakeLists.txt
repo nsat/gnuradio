@@ -39,6 +39,9 @@ GR_PYTHON_INSTALL(PROGRAMS
 install(
     FILES
     qtgui_tags_viewing.grc
+    qtgui_vector_sink_example.grc
+    qtgui_message_inputs.grc
+    test_qtgui_msg.grc
     DESTINATION ${GR_PKG_QTGUI_EXAMPLES_DIR}
     COMPONENT "qtgui_python"
 )

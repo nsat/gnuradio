@@ -61,12 +61,12 @@ self.\$(id).set_subdev_spec(\$sd_spec$(m), $m)
 \#end if
 ########################################################################
 #end for
+self.\$(id).set_samp_rate(\$samp_rate)
 \#if \$sync() == 'sync'
 self.\$(id).set_time_unknown_pps(uhd.time_spec())
 \#elif \$sync() == 'pc_clock'
 self.\$(id).set_time_now(uhd.time_spec(time.time()), uhd.ALL_MBOARDS)
 \#end if
-self.\$(id).set_samp_rate(\$samp_rate)
 #for $n in range($max_nchan)
 \#if \$nchan() > $n
 self.\$(id).set_center_freq(\$center_freq$(n), $n)
@@ -81,6 +81,20 @@ self.\$(id).set_antenna(\$ant$(n), $n)
 	\#if \$bw$(n)()
 self.\$(id).set_bandwidth(\$bw$(n), $n)
 	\#end if
+#if $sourk == 'source'
+	\#if \$lo_export$(n)() and not \$hide_lo_controls()
+self.\$(id).set_lo_export_enabled(\$lo_export$(n), uhd.ALL_LOS, $n)
+	\#end if
+    \#if \$lo_source$(n)() and not \$hide_lo_controls()
+self.\$(id).set_lo_source(\$lo_source$(n), uhd.ALL_LOS, $n)
+	\#end if
+	\#if \$dc_offs_enb$(n)()
+self.\$(id).set_auto_dc_offset(\$dc_offs_enb$(n), $n)
+	\#end if
+	\#if \$iq_imbal_enb$(n)()
+self.\$(id).set_auto_iq_balance(\$iq_imbal_enb$(n), $n)
+	\#end if
+#end if
 \#end if
 #end for
 </make>
@@ -92,7 +106,15 @@ self.\$(id).set_normalized_gain(\$gain$(n), $n)
 \#else
 self.\$(id).set_gain(\$gain$(n), $n)
 \#end if
-</callback>
+	</callback>
+	<callback>\#if not \$hide_lo_controls()
+set_lo_source(\$lo_source$(n), uhd.ALL_LOS, $n)
+\#end if
+	</callback>
+    <callback>\#if not \$hide_lo_controls()
+set_lo_export_enabled(\$lo_export$(n), uhd.ALL_LOS, $n)
+\#end if
+	</callback>
 	<callback>set_antenna(\$ant$(n), $n)</callback>
 	<callback>set_bandwidth(\$bw$(n), $n)</callback>
 	#end for
@@ -135,6 +157,10 @@ self.\$(id).set_gain(\$gain$(n), $n)
 		<option>
 			<name>Complex int16</name>
 			<key>sc16</key>
+		</option>
+		<option>
+			<name>Complex int12</name>
+			<key>sc12</key>
 		</option>
 		<option>
 			<name>Complex int8</name>
@@ -225,6 +251,22 @@ self.\$(id).set_gain(\$gain$(n), $n)
 		<option>
 			<name>Default</name>
 			<key>0.0</key>
+		</option>
+		<option>
+			<name>200 MHz</name>
+			<key>200e6</key>
+		</option>
+		<option>
+			<name>184.32 MHz</name>
+			<key>184.32e6</key>
+		</option>
+		<option>
+			<name>120 MHz</name>
+			<key>120e6</key>
+		</option>
+		<option>
+			<name>30.72 MHz</name>
+			<key>30.72e6</key>
 		</option>
 	</param>
 	<param>
@@ -327,7 +369,8 @@ self.\$(id).set_gain(\$gain$(n), $n)
 	<sink>
 		<name>command</name>
 		<type>message</type>
-        <optional>1</optional>
+		<optional>1</optional>
+		<hide>\$hide_cmd_port</hide>
 	</sink>
 	<$sourk>
 		<name>$direction</name>
@@ -408,25 +451,26 @@ When a nonempty string is given, the USRP sink will look for length tags \\
 to determine transmit burst lengths.
 
 See the UHD manual for more detailed documentation:
-http://code.ettus.com/redmine/ettus/projects/uhd/wiki
+http://uhd.ettus.com
 	</doc>
 </block>
 """
 
-PARAMS_TMPL = """
-	<param>
+PARAMS_TMPL = """	<param>
 		<name>Ch$(n): Center Freq (Hz)</name>
 		<key>center_freq$(n)</key>
 		<value>0</value>
 		<type>real</type>
 		<hide>\#if \$nchan() > $n then 'none' else 'all'#</hide>
+		<tab>RF Options</tab>
 	</param>
 	<param>
-                <name>Ch$(n): Gain Value</name>
+		<name>Ch$(n): Gain Value</name>
 		<key>gain$(n)</key>
 		<value>0</value>
 		<type>float</type>
 		<hide>\#if \$nchan() > $n then 'none' else 'all'#</hide>
+		<tab>RF Options</tab>
 	</param>
 	<param>
 		<name>Ch$(n): Gain Type</name>
@@ -448,6 +492,7 @@ PARAMS_TMPL = """
 			<name>Normalized</name>
 			<key>True</key>
 		</option>
+		<tab>RF Options</tab>
 	</param>
 	<param>
 		<name>Ch$(n): Antenna</name>
@@ -463,6 +508,17 @@ PARAMS_TMPL = """
 				part
 			\#end if
 		</hide>
+		<option>
+			<name>TX/RX</name>
+			<key>TX/RX</key>
+		</option>
+#if $sourk == 'source'
+		<option>
+			<name>RX2</name>
+			<key>RX2</key>
+		</option>
+#end if
+		<tab>RF Options</tab>
 	</param>
 	<param>
 		<name>Ch$(n): Bandwidth (Hz)</name>
@@ -478,18 +534,143 @@ PARAMS_TMPL = """
 				part
 			\#end if
 		</hide>
+		<tab>RF Options</tab>
+	</param>
+#if $sourk == 'source'
+	<param>
+		<name>Ch$(n): LO Source</name>
+		<key>lo_source$(n)</key>
+		<value>internal</value>
+		<type>string</type>
+		<hide>
+			\#if not \$nchan() > $n
+				all
+			\#elif \$hide_lo_controls()
+				all
+			\#else
+				none
+			\#end if
+		</hide>
+		<option>
+			<name>Internal</name>
+			<key>internal</key>
+		</option>
+		<option>
+			<name>External</name>
+			<key>external</key>
+		</option>
+		<option>
+			<name>Companion</name>
+			<key>companion</key>
+		</option>
+		<tab>RF Options</tab>
+	</param>
+#end if
+#if $sourk == 'source'
+	<param>
+		<name>Ch$(n): LO Export</name>
+		<key>lo_export$(n)</key>
+		<value>False</value>
+		<type>bool</type>
+		<hide>
+			\#if not \$nchan() > $n
+				all
+			\#elif \$hide_lo_controls()
+				all
+			\#else
+				none
+			\#end if
+		</hide>
+		<option>
+			<name>True</name>
+			<key>True</key>
+		</option>
+		<option>
+			<name>False</name>
+			<key>False</key>
+		</option>
+		<tab>RF Options</tab>
+	</param>
+#end if
+#if $sourk == 'source'
+	<param>
+		<name>Ch$(n): Enable DC Offset Correction</name>
+		<key>dc_offs_enb$(n)</key>
+		<value>""</value>
+		<type>raw</type>
+		<hide>
+			\#if not \$nchan() > $n
+				all
+			\#else
+				part
+			\#end if
+		</hide>
+		<tab>FE Corrections</tab>
+	</param>
+	<param>
+		<name>Ch$(n): Enable IQ Imbalance Correction</name>
+		<key>iq_imbal_enb$(n)</key>
+		<value>""</value>
+		<type>raw</type>
+		<hide>
+			\#if not \$nchan() > $n
+				all
+			\#else
+				part
+			\#end if
+		</hide>
+		<tab>FE Corrections</tab>
+	</param>
+#end if
+"""
+
+SHOW_CMD_PORT_PARAM = """
+	<param>
+		<name>Show Command Port</name>
+		<key>hide_cmd_port</key>
+		<value>False</value>
+		<type>enum</type>
+		<hide>part</hide>
+		<option>
+			<name>Yes</name>
+			<key>False</key>
+		</option>
+		<option>
+			<name>No</name>
+			<key>True</key>
+		</option>
+		<tab>Advanced</tab>
 	</param>
 """
 
-LENTAG_PARAM = """	<param>
-		<name>Length tag name</name>
+SHOW_LO_CONTROLS_PARAM = """
+	<param>
+		<name>Show LO Controls</name>
+		<key>hide_lo_controls</key>
+		<value>True</value>
+		<type>bool</type>
+		<hide>part</hide>
+		<option>
+			<name>Yes</name>
+			<key>False</key>
+		</option>
+		<option>
+			<name>No</name>
+			<key>True</key>
+		</option>
+		<tab>Advanced</tab>
+	</param>
+"""
+
+TSBTAG_PARAM = """	<param>
+		<name>TSB tag name</name>
 		<key>len_tag_name</key>
 		<value></value>
 		<type>string</type>
 		<hide>\#if len(str(\$len_tag_name())) then 'none' else 'part'#</hide>
 	</param>"""
 
-LENTAG_ARG = """
+TSBTAG_ARG = """
 	#if $len_tag_name()
 	$len_tag_name,
 	#end if"""
@@ -512,10 +693,12 @@ if __name__ == '__main__':
 			direction = 'in'
 		else: raise Exception, 'is %s a source or sink?'%file
 
-		params = ''.join([parse_tmpl(PARAMS_TMPL, n=n) for n in range(max_num_channels)])
+		params = ''.join([parse_tmpl(PARAMS_TMPL, n=n, sourk=sourk) for n in range(max_num_channels)])
+		params += SHOW_CMD_PORT_PARAM
+		params += SHOW_LO_CONTROLS_PARAM
 		if sourk == 'sink':
-			params += LENTAG_PARAM
-			lentag_arg = LENTAG_ARG
+			params += TSBTAG_PARAM
+			lentag_arg = TSBTAG_ARG
 		else: lentag_arg = ''
 		open(file, 'w').write(parse_tmpl(MAIN_TMPL,
 			lentag_arg=lentag_arg,

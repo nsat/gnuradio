@@ -31,6 +31,8 @@ NO_MODS_MASK = 0
 _actions_keypress_dict = dict()
 _keymap = gtk.gdk.keymap_get_default()
 _used_mods_mask = NO_MODS_MASK
+
+
 def handle_key_press(event):
     """
     Call the action associated with the key press event.
@@ -43,21 +45,30 @@ def handle_key_press(event):
         true if handled
     """
     _used_mods_mask = reduce(lambda x, y: x | y, [mod_mask for keyval, mod_mask in _actions_keypress_dict], NO_MODS_MASK)
-    #extract the key value and the consumed modifiers
+    # extract the key value and the consumed modifiers
     keyval, egroup, level, consumed = _keymap.translate_keyboard_state(
         event.hardware_keycode, event.state, event.group)
-    #get the modifier mask and ignore irrelevant modifiers
+    # get the modifier mask and ignore irrelevant modifiers
     mod_mask = event.state & ~consumed & _used_mods_mask
-    #look up the keypress and call the action
-    try: _actions_keypress_dict[(keyval, mod_mask)]()
-    except KeyError: return False #not handled
-    return True #handled here
+    # look up the keypress and call the action
+    try:
+        _actions_keypress_dict[(keyval, mod_mask)]()
+    except KeyError:
+        return False  # not handled
+    else:
+        return True  # handled here
 
 _all_actions_list = list()
-def get_all_actions(): return _all_actions_list
+
+
+def get_all_actions():
+    return _all_actions_list
 
 _accel_group = gtk.AccelGroup()
-def get_accel_group(): return _accel_group
+
+
+def get_accel_group():
+    return _accel_group
 
 
 class _ActionBase(object):
@@ -69,34 +80,37 @@ class _ActionBase(object):
         _all_actions_list.append(self)
         for i in range(len(keypresses)/2):
             keyval, mod_mask = keypresses[i*2:(i+1)*2]
-            #register this keypress
+            # register this keypress
             if _actions_keypress_dict.has_key((keyval, mod_mask)):
-                raise KeyError('keyval/mod_mask pair already registered "%s"'%str((keyval, mod_mask)))
+                raise KeyError('keyval/mod_mask pair already registered "%s"' % str((keyval, mod_mask)))
             _actions_keypress_dict[(keyval, mod_mask)] = self
-            #set the accelerator group, and accelerator path
-            #register the key name and mod mask with the accelerator path
-            if label is None: continue #dont register accel
-            accel_path = '<main>/'+self.get_name()
+            # set the accelerator group, and accelerator path
+            # register the key name and mod mask with the accelerator path
+            if label is None:
+                continue  # dont register accel
+            accel_path = '<main>/' + self.get_name()
             self.set_accel_group(get_accel_group())
             self.set_accel_path(accel_path)
             gtk.accel_map_add_entry(accel_path, keyval, mod_mask)
+        self.args = None
 
     def __str__(self):
         """
         The string representation should be the name of the action id.
         Try to find the action id for this action by searching this module.
         """
-        try:
-            import Actions
-            return filter(lambda attr: getattr(Actions, attr) == self, dir(Actions))[0]
-        except: return self.get_name()
+        for name, value in globals().iteritems():
+            if value == self:
+                return name
+        return self.get_name()
 
     def __repr__(self): return str(self)
 
-    def __call__(self):
+    def __call__(self, *args):
         """
         Emit the activate signal when called with ().
         """
+        self.args = args
         self.emit('activate')
 
 
@@ -115,12 +129,10 @@ class Action(gtk.Action, _ActionBase):
             key_presses: a tuple of (keyval1, mod_mask1, keyval2, mod_mask2, ...)
             the: regular gtk.Action parameters (defaults to None)
         """
-        if name is None: name = label
-        gtk.Action.__init__(self,
-            name=name, label=label,
-            tooltip=tooltip, stock_id=stock_id,
-        )
-        #register this action
+        if name is None:
+            name = label
+        gtk.Action.__init__(self, name=name, label=label, tooltip=tooltip,
+                            stock_id=stock_id)
         _ActionBase.__init__(self, label, keypresses)
 
 
@@ -141,27 +153,27 @@ class ToggleAction(gtk.ToggleAction, _ActionBase):
         """
         if name is None:
             name = label
-        gtk.ToggleAction.__init__(self,
-            name=name, label=label, tooltip=tooltip, stock_id=stock_id,
-        )
+        gtk.ToggleAction.__init__(self, name=name, label=label,
+                                  tooltip=tooltip, stock_id=stock_id)
         _ActionBase.__init__(self, label, keypresses)
         self.preference_name = preference_name
         self.default = default
 
     def load_from_preferences(self):
         if self.preference_name is not None:
-            self.set_active(Preferences.bool_entry(self.preference_name,
-                                                   default=self.default))
+            self.set_active(Preferences.entry(
+                self.preference_name, default=bool(self.default)))
 
     def save_to_preferences(self):
         if self.preference_name is not None:
-            Preferences.bool_entry(self.preference_name,
-                                   value=self.get_active())
+            Preferences.entry(self.preference_name, value=self.get_active())
 
 ########################################################################
 # Actions
 ########################################################################
 PAGE_CHANGE = Action()
+EXTERNAL_UPDATE = Action()
+VARIABLE_EDITOR_UPDATE = Action()
 FLOW_GRAPH_NEW = Action(
     label='_New',
     tooltip='Create a new flow graph',
@@ -173,6 +185,11 @@ FLOW_GRAPH_OPEN = Action(
     tooltip='Open an existing flow graph',
     stock_id=gtk.STOCK_OPEN,
     keypresses=(gtk.keysyms.o, gtk.gdk.CONTROL_MASK),
+)
+FLOW_GRAPH_OPEN_RECENT = Action(
+    label='Open _Recent',
+    tooltip='Open a recently used flow graph',
+    stock_id=gtk.STOCK_OPEN,
 )
 FLOW_GRAPH_SAVE = Action(
     label='_Save',
@@ -212,6 +229,12 @@ FLOW_GRAPH_REDO = Action(
     keypresses=(gtk.keysyms.y, gtk.gdk.CONTROL_MASK),
 )
 NOTHING_SELECT = Action()
+SELECT_ALL = Action(
+    label='Select _All',
+    tooltip='Select all blocks and connections in the flow graph',
+    stock_id=gtk.STOCK_SELECT_ALL,
+    keypresses=(gtk.keysyms.a, gtk.gdk.CONTROL_MASK),
+)
 ELEMENT_SELECT = Action()
 ELEMENT_CREATE = Action()
 ELEMENT_DELETE = Action(
@@ -233,6 +256,45 @@ BLOCK_ROTATE_CW = Action(
     stock_id=gtk.STOCK_GO_FORWARD,
     keypresses=(gtk.keysyms.Right, NO_MODS_MASK),
 )
+BLOCK_VALIGN_TOP = Action(
+    label='Vertical Align Top',
+    tooltip='Align tops of selected blocks',
+    keypresses=(gtk.keysyms.t, gtk.gdk.SHIFT_MASK),
+)
+BLOCK_VALIGN_MIDDLE = Action(
+    label='Vertical Align Middle',
+    tooltip='Align centers of selected blocks vertically',
+    keypresses=(gtk.keysyms.m, gtk.gdk.SHIFT_MASK),
+)
+BLOCK_VALIGN_BOTTOM = Action(
+    label='Vertical Align Bottom',
+    tooltip='Align bottoms of selected blocks',
+    keypresses=(gtk.keysyms.b, gtk.gdk.SHIFT_MASK),
+)
+BLOCK_HALIGN_LEFT = Action(
+    label='Horizontal Align Left',
+    tooltip='Align left edges of blocks selected blocks',
+    keypresses=(gtk.keysyms.l, gtk.gdk.SHIFT_MASK),
+)
+BLOCK_HALIGN_CENTER = Action(
+    label='Horizontal Align Center',
+    tooltip='Align centers of selected blocks horizontally',
+    keypresses=(gtk.keysyms.c, gtk.gdk.SHIFT_MASK),
+)
+BLOCK_HALIGN_RIGHT = Action(
+    label='Horizontal Align Right',
+    tooltip='Align right edges of selected blocks',
+    keypresses=(gtk.keysyms.r, gtk.gdk.SHIFT_MASK),
+)
+BLOCK_ALIGNMENTS = [
+    BLOCK_VALIGN_TOP,
+    BLOCK_VALIGN_MIDDLE,
+    BLOCK_VALIGN_BOTTOM,
+    None,
+    BLOCK_HALIGN_LEFT,
+    BLOCK_HALIGN_CENTER,
+    BLOCK_HALIGN_RIGHT,
+]
 BLOCK_PARAM_MODIFY = Action(
     label='_Properties',
     tooltip='Modify params for the selected block',
@@ -268,6 +330,26 @@ TOGGLE_HIDE_DISABLED_BLOCKS = ToggleAction(
     stock_id=gtk.STOCK_MISSING_IMAGE,
     keypresses=(gtk.keysyms.d, gtk.gdk.CONTROL_MASK),
 )
+TOGGLE_HIDE_VARIABLES = ToggleAction(
+    label='Hide Variables',
+    tooltip='Hide all variable blocks',
+    preference_name='hide_variables',
+    default=False,
+)
+TOGGLE_FLOW_GRAPH_VAR_EDITOR = ToggleAction(
+    label='Show _Variable Editor',
+    tooltip='Show the variable editor. Modify variables and imports in this flow graph',
+    stock_id=gtk.STOCK_EDIT,
+    default=True,
+    keypresses=(gtk.keysyms.e, gtk.gdk.CONTROL_MASK),
+    preference_name='variable_editor_visable',
+)
+TOGGLE_FLOW_GRAPH_VAR_EDITOR_SIDEBAR = ToggleAction(
+    label='Move the Variable Editor to the Sidebar',
+    tooltip='Move the variable editor to the sidebar',
+    default=False,
+    preference_name='variable_editor_sidebar',
+)
 TOGGLE_AUTO_HIDE_PORT_LABELS = ToggleAction(
     label='Auto-Hide _Port Labels',
     tooltip='Automatically hide port labels',
@@ -283,6 +365,12 @@ TOGGLE_SHOW_CODE_PREVIEW_TAB = ToggleAction(
     tooltip="Show a preview of the code generated for each Block in its "
             "Properties Dialog",
     preference_name='show_generated_code_tab',
+    default=False,
+)
+TOGGLE_SHOW_FLOWGRAPH_COMPLEXITY = ToggleAction(
+    label='Show Flowgraph Complexity',
+    tooltip="How many Balints is the flowgraph...",
+    preference_name='show_flowgraph_complexity',
     default=False,
 )
 BLOCK_CREATE_HIER = Action(
@@ -314,11 +402,11 @@ ERRORS_WINDOW_DISPLAY = Action(
     tooltip='View flow graph errors',
     stock_id=gtk.STOCK_DIALOG_ERROR,
 )
-TOGGLE_REPORTS_WINDOW = ToggleAction(
-    label='Show _Reports Panel',
-    tooltip='Toggle visibility of the Report widget',
+TOGGLE_CONSOLE_WINDOW = ToggleAction(
+    label='Show _Console Panel',
+    tooltip='Toggle visibility of the console',
     keypresses=(gtk.keysyms.r, gtk.gdk.CONTROL_MASK),
-    preference_name='reports_window_visible'
+    preference_name='console_window_visible'
 )
 TOGGLE_BLOCKS_WINDOW = ToggleAction(
     label='Show _Block Tree Panel',
@@ -327,8 +415,8 @@ TOGGLE_BLOCKS_WINDOW = ToggleAction(
     preference_name='blocks_window_visible'
 )
 TOGGLE_SCROLL_LOCK = ToggleAction(
-    label='Reports Scroll _Lock',
-    tooltip='Toggle scroll lock for the report window',
+    label='Console Scroll _Lock',
+    tooltip='Toggle scroll lock for the console window',
     preference_name='scroll_lock'
 )
 ABOUT_WINDOW_DISPLAY = Action(
@@ -366,7 +454,7 @@ FLOW_GRAPH_KILL = Action(
     keypresses=(gtk.keysyms.F7, NO_MODS_MASK),
 )
 FLOW_GRAPH_SCREEN_CAPTURE = Action(
-    label='Sc_reen Capture',
+    label='Screen Ca_pture',
     tooltip='Create a screen capture of the flow graph',
     stock_id=gtk.STOCK_PRINT,
     keypresses=(gtk.keysyms.Print, NO_MODS_MASK),
@@ -395,14 +483,14 @@ FIND_BLOCKS = Action(
     keypresses=(gtk.keysyms.f, gtk.gdk.CONTROL_MASK,
                 gtk.keysyms.slash, NO_MODS_MASK),
 )
-CLEAR_REPORTS = Action(
-    label='_Clear Reports',
-    tooltip='Clear Reports',
+CLEAR_CONSOLE = Action(
+    label='_Clear Console',
+    tooltip='Clear Console',
     stock_id=gtk.STOCK_CLEAR,
 )
-SAVE_REPORTS = Action(
-    label='_Save Reports',
-    tooltip='Save Reports',
+SAVE_CONSOLE = Action(
+    label='_Save Console',
+    tooltip='Save Console',
     stock_id=gtk.STOCK_SAVE,
 )
 OPEN_HIER = Action(
@@ -422,8 +510,13 @@ BUSSIFY_SINKS = Action(
 )
 XML_PARSER_ERRORS_DISPLAY = Action(
     label='_Parser Errors',
-    tooltip='View errors that occured while parsing XML files',
+    tooltip='View errors that occurred while parsing XML files',
     stock_id=gtk.STOCK_DIALOG_ERROR,
+)
+FLOW_GRAPH_OPEN_QSS_THEME = Action(
+    label='Set Default QT GUI _Theme',
+    tooltip='Set a default QT Style Sheet file to use for QT GUI',
+    stock_id=gtk.STOCK_OPEN,
 )
 TOOLS_RUN_FDESIGN = Action(
     label='Filter Design Tool',

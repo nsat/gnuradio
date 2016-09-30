@@ -40,7 +40,6 @@ GR_REGISTER_COMPONENT("gnuradio-runtime" ENABLE_GNURADIO_RUNTIME
 )
 
 GR_SET_GLOBAL(GNURADIO_RUNTIME_INCLUDE_DIRS
-    ${CMAKE_CURRENT_SOURCE_DIR}/../build/gnuradio/build-runtime/swig
     ${CMAKE_BINARY_DIR}
     ${CMAKE_SOURCE_DIR}/gnuradio-runtime/include
     ${CMAKE_BINARY_DIR}/gnuradio-runtime/include

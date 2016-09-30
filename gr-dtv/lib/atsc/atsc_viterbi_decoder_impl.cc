@@ -27,7 +27,7 @@
 #include <gnuradio/io_signature.h>
 #include "atsc_viterbi_decoder_impl.h"
 #include "atsc_types.h"
-#include <atsc_viterbi_mux.cc> // machine generated
+#include "atsc_viterbi_mux.h"
 
 namespace gr {
   namespace dtv {
@@ -75,6 +75,15 @@ namespace gr {
     {
       for (int i = 0; i < NCODERS; i++)
         fifo[i]->reset();
+    }
+
+    std::vector<float>
+    atsc_viterbi_decoder_impl::decoder_metrics() const
+    {
+      std::vector<float> metrics(NCODERS);
+      for (int i = 0; i < NCODERS; i++)
+        metrics[i] = viterbi[i].best_state_metric();
+      return metrics;
     }
 
     int
@@ -133,6 +142,22 @@ namespace gr {
       }
 
       return noutput_items;
+    }
+
+    void
+    atsc_viterbi_decoder_impl::setup_rpc()
+    {
+#ifdef GR_CTRLPORT
+      add_rpc_variable(
+        rpcbasic_sptr(new rpcbasic_register_get<atsc_viterbi_decoder, std::vector<float> >(
+	  alias(), "decoder_metrics",
+	  &atsc_viterbi_decoder::decoder_metrics,
+	  pmt::make_f32vector(1,0),
+	  pmt::make_f32vector(1,100000),
+	  pmt::make_f32vector(1,0),
+	  "", "Viterbi decoder metrics", RPC_PRIVLVL_MIN,
+          DISPTIME)));
+#endif /* GR_CTRLPORT */
     }
 
   } /* namespace dtv */

@@ -24,6 +24,10 @@
 #include "config.h"
 #endif
 
+#ifdef _MSC_VER
+#include <io.h>
+#endif
+
 #include "audio_registry.h"
 #include <portaudio_source.h>
 #include <portaudio_impl.h>
@@ -34,6 +38,9 @@
 #include <unistd.h>
 #include <stdexcept>
 #include <string.h>
+#ifdef _MSC_VER
+#include <io.h>
+#endif 
 
 namespace gr {
   namespace audio {

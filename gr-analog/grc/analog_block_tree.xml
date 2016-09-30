@@ -27,7 +27,7 @@
 ###################################################
  -->
 <cat>
-  <name></name> <!-- Blank for Root Name -->
+  <name>[Core]</name>
   <cat>
     <name>Level Controllers</name>
     <block>analog_agc_xx</block>
@@ -42,7 +42,6 @@
   </cat>
   <cat>
     <name>Modulators</name>
-    <block>analog_cpfsk_bc</block>
     <block>analog_frequency_modulator_fc</block>
     <block>analog_phase_modulator_fc</block>
     <block>analog_quadrature_demod_cf</block>
@@ -63,6 +62,7 @@
     <block>analog_noise_source_x</block>
     <block>analog_fastnoise_source_x</block>
     <block>analog_random_source_x</block>
+    <block>analog_random_uniform_source_x</block>
   </cat>
   <cat>
     <name>Synchronizers</name>

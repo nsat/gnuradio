@@ -17,37 +17,43 @@ along with this program; if not, write to the Free Software
 Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston, MA  02110-1301, USA
 """
 
-from Constants import SCROLL_PROXIMITY_SENSITIVITY, SCROLL_DISTANCE
-import Actions
-import Colors
-import Utils
-from Element import Element
-import pygtk
-pygtk.require('2.0')
-import gtk
+import functools
 import random
-import Messages
-import Bars
+from distutils.spawn import find_executable
+from itertools import chain, count
+from operator import methodcaller
 
-class FlowGraph(Element):
+import gobject
+
+from . import Actions, Colors, Constants, Utils, Bars, Dialogs
+from .Constants import SCROLL_PROXIMITY_SENSITIVITY, SCROLL_DISTANCE
+from .Element import Element
+from .external_editor import ExternalEditor
+
+from ..core.FlowGraph import FlowGraph as _Flowgraph
+from ..core import Messages
+
+
+class FlowGraph(Element, _Flowgraph):
     """
     FlowGraph is the data structure to store graphical signal blocks,
     graphical inputs and outputs,
     and the connections between inputs and outputs.
     """
 
-    def __init__(self):
+    def __init__(self, **kwargs):
         """
         FlowGraph constructor.
         Create a list for signal blocks and connections. Connect mouse handlers.
         """
         Element.__init__(self)
+        _Flowgraph.__init__(self, **kwargs)
         #when is the flow graph selected? (used by keyboard event handler)
         self.is_selected = lambda: bool(self.get_selected_elements())
         #important vars dealing with mouse event tracking
         self.element_moved = False
         self.mouse_pressed = False
-        self.unselect()
+        self._selected_elements = []
         self.press_coor = (0, 0)
         #selected ports
         self._old_selected_port = None
@@ -57,6 +63,63 @@ class FlowGraph(Element):
         #context menu
         self._context_menu = Bars.ContextMenu()
         self.get_context_menu = lambda: self._context_menu
+
+        self._external_updaters = {}
+
+    def _get_unique_id(self, base_id=''):
+        """
+        Get a unique id starting with the base id.
+
+        Args:
+            base_id: the id starts with this and appends a count
+
+        Returns:
+            a unique id
+        """
+        for index in count():
+            block_id = '{}_{}'.format(base_id, index)
+            if block_id not in (b.get_id() for b in self.blocks):
+                break
+        return block_id
+
+    def install_external_editor(self, param):
+        target = (param.get_parent().get_id(), param.get_key())
+
+        if target in self._external_updaters:
+            editor = self._external_updaters[target]
+        else:
+            config = self.get_parent().config
+            editor = (find_executable(config.editor) or
+                      Dialogs.ChooseEditorDialog(config))
+            if not editor:
+                return
+            updater = functools.partial(
+                self.handle_external_editor_change, target=target)
+            editor = self._external_updaters[target] = ExternalEditor(
+                editor=editor,
+                name=target[0], value=param.get_value(),
+                callback=functools.partial(gobject.idle_add, updater)
+            )
+            editor.start()
+        try:
+            editor.open_editor()
+        except Exception as e:
+            # Problem launching the editor. Need to select a new editor.
+            Messages.send('>>> Error opening an external editor. Please select a different editor.\n')
+            # Reset the editor to force the user to select a new one.
+            self.get_parent().config.editor = ''
+
+    def handle_external_editor_change(self, new_value, target):
+        try:
+            block_id, param_key = target
+            self.get_block(block_id).get_param(param_key).set_value(new_value)
+
+        except (IndexError, ValueError):  # block no longer exists
+            self._external_updaters[target].stop()
+            del self._external_updaters[target]
+            return
+        Actions.EXTERNAL_UPDATE()
+
 
     ###########################################################################
     # Access Drawing Area
@@ -80,14 +143,17 @@ class FlowGraph(Element):
         """
         id = self._get_unique_id(key)
         #calculate the position coordinate
+        W, H = self.get_size()
         h_adj = self.get_scroll_pane().get_hadjustment()
         v_adj = self.get_scroll_pane().get_vadjustment()
         if coor is None: coor = (
-            int(random.uniform(.25, .75)*h_adj.page_size + h_adj.get_value()),
-            int(random.uniform(.25, .75)*v_adj.page_size + v_adj.get_value()),
+            int(random.uniform(.25, .75) * min(h_adj.page_size, W) +
+                h_adj.get_value()),
+            int(random.uniform(.25, .75) * min(v_adj.page_size, H) +
+                v_adj.get_value()),
         )
         #get the new block
-        block = self.get_new_block(key)
+        block = self.new_block(key)
         block.set_coordinate(coor)
         block.set_rotation(0)
         block.get_param('id').set_value(id)
@@ -116,7 +182,7 @@ class FlowGraph(Element):
         #get connections between selected blocks
         connections = filter(
             lambda c: c.get_source().get_parent() in blocks and c.get_sink().get_parent() in blocks,
-            self.get_connections(),
+            self.connections,
         )
         clipboard = (
             (x_min, y_min),
@@ -140,22 +206,29 @@ class FlowGraph(Element):
         v_adj = self.get_scroll_pane().get_vadjustment()
         x_off = h_adj.get_value() - x_min + h_adj.page_size/4
         y_off = v_adj.get_value() - y_min + v_adj.page_size/4
+        if len(self.get_elements()) <= 1:
+            x_off, y_off = 0, 0
         #create blocks
         for block_n in blocks_n:
             block_key = block_n.find('key')
             if block_key == 'options': continue
-            block = self.get_new_block(block_key)
+            block = self.new_block(block_key)
+            if not block:
+                continue  # unknown block was pasted (e.g. dummy block)
             selected.add(block)
             #set params
-            params_n = block_n.findall('param')
-            for param_n in params_n:
-                param_key = param_n.find('key')
-                param_value = param_n.find('value')
+            params = dict((n.find('key'), n.find('value'))
+                          for n in block_n.findall('param'))
+            if block_key == 'epy_block':
+                block.get_param('_io_cache').set_value(params.pop('_io_cache'))
+                block.get_param('_source_code').set_value(params.pop('_source_code'))
+                block.rewrite()  # this creates the other params
+            for param_key, param_value in params.iteritems():
                 #setup id parameter
                 if param_key == 'id':
                     old_id2block[param_value] = block
                     #if the block id is not unique, get a new block id
-                    if param_value in [bluck.get_id() for bluck in self.get_blocks()]:
+                    if param_value in (blk.get_id() for blk in self.blocks):
                         param_value = self._get_unique_id(param_value)
                 #set value to key
                 block.get_param(param_key).set_value(param_value)
@@ -236,8 +309,52 @@ class FlowGraph(Element):
             delta_coordinate: the change in coordinates
         """
         for selected_block in self.get_selected_blocks():
+            delta_coordinate = selected_block.bound_move_delta(delta_coordinate)
+
+        for selected_block in self.get_selected_blocks():
             selected_block.move(delta_coordinate)
             self.element_moved = True
+
+    def align_selected(self, calling_action=None):
+        """
+        Align the selected blocks.
+
+        Args:
+            calling_action: the action initiating the alignment
+
+        Returns:
+            True if changed, otherwise False
+        """
+        blocks = self.get_selected_blocks()
+        if calling_action is None or not blocks:
+            return False
+
+        # compute common boundary of selected objects
+        min_x, min_y = max_x, max_y = blocks[0].get_coordinate()
+        for selected_block in blocks:
+            x, y = selected_block.get_coordinate()
+            min_x, min_y = min(min_x, x), min(min_y, y)
+            x += selected_block.W
+            y += selected_block.H
+            max_x, max_y = max(max_x, x), max(max_y, y)
+        ctr_x, ctr_y = (max_x + min_x)/2, (max_y + min_y)/2
+
+        # align the blocks as requested
+        transform = {
+                Actions.BLOCK_VALIGN_TOP: lambda x, y, w, h: (x, min_y),
+                Actions.BLOCK_VALIGN_MIDDLE: lambda x, y, w, h: (x, ctr_y - h/2),
+                Actions.BLOCK_VALIGN_BOTTOM: lambda x, y, w, h: (x, max_y - h),
+                Actions.BLOCK_HALIGN_LEFT: lambda x, y, w, h: (min_x, y),
+                Actions.BLOCK_HALIGN_CENTER: lambda x, y, w, h: (ctr_x-w/2, y),
+                Actions.BLOCK_HALIGN_RIGHT: lambda x, y, w, h: (max_x - w, y),
+        }.get(calling_action, lambda *args: args)
+
+        for selected_block in blocks:
+            x, y = selected_block.get_coordinate()
+            w, h = selected_block.W, selected_block.H
+            selected_block.set_coordinate(transform(x, y, w, h))
+
+        return True
 
     def rotate_selected(self, rotation):
         """
@@ -249,7 +366,8 @@ class FlowGraph(Element):
         Returns:
             true if changed, otherwise false.
         """
-        if not self.get_selected_blocks(): return False
+        if not self.get_selected_blocks():
+            return False
         #initialize min and max coordinates
         min_x, min_y = self.get_selected_block().get_coordinate()
         max_x, max_y = self.get_selected_block().get_coordinate()
@@ -288,13 +406,20 @@ class FlowGraph(Element):
         Draw all of the elements in this flow graph onto the pixmap.
         Draw the pixmap to the drawable window of this flow graph.
         """
+
         W,H = self.get_size()
+        hide_disabled_blocks = Actions.TOGGLE_HIDE_DISABLED_BLOCKS.get_active()
+        hide_variables = Actions.TOGGLE_HIDE_VARIABLES.get_active()
+
         #draw the background
         gc.set_foreground(Colors.FLOWGRAPH_BACKGROUND_COLOR)
         window.draw_rectangle(gc, True, 0, 0, W, H)
+
         # draw comments first
         if Actions.TOGGLE_SHOW_BLOCK_COMMENTS.get_active():
-            for block in self.get_blocks():
+            for block in self.blocks:
+                if hide_variables and (block.is_variable or block.is_import):
+                    continue  # skip hidden disabled blocks and connections
                 if block.get_enabled():
                     block.draw_comment(gc, window)
         #draw multi select rectangle
@@ -311,9 +436,11 @@ class FlowGraph(Element):
             gc.set_foreground(Colors.BORDER_COLOR)
             window.draw_rectangle(gc, False, x, y, w, h)
         #draw blocks on top of connections
-        hide_disabled_blocks = Actions.TOGGLE_HIDE_DISABLED_BLOCKS.get_active()
-        for element in self.get_connections() + self.get_blocks():
+        blocks = sorted(self.blocks, key=methodcaller('get_enabled'))
+        for element in chain(self.connections, blocks):
             if hide_disabled_blocks and not element.get_enabled():
+                continue  # skip hidden disabled blocks and connections
+            if hide_variables and (element.is_variable or element.is_import):
                 continue  # skip hidden disabled blocks and connections
             element.draw(gc, window)
         #draw selected blocks on top of selected connections
@@ -375,6 +502,10 @@ class FlowGraph(Element):
         """
         self._selected_elements = []
 
+    def select_all(self):
+        """Select all blocks in the flow graph"""
+        self._selected_elements = list(self.get_elements())
+
     def what_is_selected(self, coor, coor_m=None):
         """
         What is selected?
@@ -394,18 +525,18 @@ class FlowGraph(Element):
         selected_port = None
         selected = set()
         #check the elements
+        hide_disabled_blocks = Actions.TOGGLE_HIDE_DISABLED_BLOCKS.get_active()
+        hide_variables = Actions.TOGGLE_HIDE_VARIABLES.get_active()
         for element in reversed(self.get_elements()):
+            if hide_disabled_blocks and not element.get_enabled():
+                continue  # skip hidden disabled blocks and connections
+            if hide_variables and (element.is_variable or element.is_import):
+                continue  # skip hidden disabled blocks and connections
             selected_element = element.what_is_selected(coor, coor_m)
-            if not selected_element: continue
-            # hidden disabled connections, blocks and their ports can not be selected
-            if Actions.TOGGLE_HIDE_DISABLED_BLOCKS.get_active() and (
-                selected_element.is_block() and not selected_element.get_enabled() or
-                selected_element.is_connection() and not selected_element.get_enabled() or
-                selected_element.is_port() and not selected_element.get_parent().get_enabled()
-            ):
+            if not selected_element:
                 continue
             #update the selected port information
-            if selected_element.is_port():
+            if selected_element.is_port:
                 if not coor_m: selected_port = selected_element
                 selected_element = selected_element.get_parent()
             selected.add(selected_element)
@@ -429,7 +560,8 @@ class FlowGraph(Element):
         """
         selected = set()
         for selected_element in self.get_selected_elements():
-            if selected_element.is_connection(): selected.add(selected_element)
+            if selected_element.is_connection:
+                selected.add(selected_element)
         return list(selected)
 
     def get_selected_blocks(self):
@@ -441,7 +573,8 @@ class FlowGraph(Element):
         """
         selected = set()
         for selected_element in self.get_selected_elements():
-            if selected_element.is_block(): selected.add(selected_element)
+            if selected_element.is_block:
+                selected.add(selected_element)
         return list(selected)
 
     def get_selected_block(self):
@@ -451,7 +584,8 @@ class FlowGraph(Element):
         Returns:
             a block or None
         """
-        return self.get_selected_blocks() and self.get_selected_blocks()[0] or None
+        selected_blocks = self.get_selected_blocks()
+        return selected_blocks[0] if selected_blocks else None
 
     def get_selected_elements(self):
         """
@@ -469,7 +603,8 @@ class FlowGraph(Element):
         Returns:
             a block, port, or connection or None
         """
-        return self.get_selected_elements() and self.get_selected_elements()[0] or None
+        selected_elements = self.get_selected_elements()
+        return selected_elements[0] if selected_elements else None
 
     def update_selected_elements(self):
         """
@@ -616,7 +751,7 @@ class FlowGraph(Element):
                     adj.set_value(adj_val-SCROLL_DISTANCE)
                     adj.emit('changed')
             #remove the connection if selected in drag event
-            if len(self.get_selected_elements()) == 1 and self.get_selected_element().is_connection():
+            if len(self.get_selected_elements()) == 1 and self.get_selected_element().is_connection:
                 Actions.ELEMENT_DELETE()
             #move the selected elements and record the new coordinate
             if not self.get_ctrl_mask():

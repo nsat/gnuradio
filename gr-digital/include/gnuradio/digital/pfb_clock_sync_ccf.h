@@ -187,7 +187,16 @@ namespace gr {
       virtual void update_gains() = 0;
 
       /*!
-       * Resets the filterbank's filter taps with the new prototype filter
+       * Resets the filterbank's filter taps with the new prototype filter.
+       */
+      virtual void update_taps(const std::vector<float> &taps) = 0;
+
+      /*!
+       * Used to set the taps of the filters in the filterbank and
+       * differential filterbank.
+       *
+       * WARNING: this should not be used externally and will be moved
+       * to a private function in the next API.
        */
       virtual void set_taps(const std::vector<float> &taps,
 			    std::vector< std::vector<float> > &ourtaps,
@@ -319,7 +328,7 @@ namespace gr {
        * \brief Returns the current error of the control loop.
        */
       virtual float error() const = 0;
-  
+
       /*!
        * \brief Returns the current rate of the control loop.
        */

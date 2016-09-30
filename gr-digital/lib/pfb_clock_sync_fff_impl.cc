@@ -66,7 +66,7 @@ namespace gr {
 	d_osps(osps), d_error(0), d_out_idx(0)
     {
       if(taps.size() == 0)
-        throw std::runtime_error("pfb_clock_sync_ccf: please specify a filter.\n");
+        throw std::runtime_error("pfb_clock_sync_fff: please specify a filter.\n");
 
       // Let scheduler adjust our relative_rate.
       enable_update_rate(true);
@@ -129,6 +129,13 @@ namespace gr {
       unsigned ninputs = ninput_items_required.size ();
       for(unsigned i = 0; i < ninputs; i++)
         ninput_items_required[i] = (noutput_items + history()) * (d_sps/d_osps);
+    }
+
+    void
+    pfb_clock_sync_fff_impl::update_taps(const std::vector<float> &taps)
+    {
+      d_updated_taps = taps;
+      d_updated = true;
     }
 
     /*******************************************************************
@@ -258,8 +265,6 @@ namespace gr {
 
       // Make sure there is enough output space for d_osps outputs/input.
       set_output_multiple(d_osps);
-
-      d_updated = true;
     }
 
     void
@@ -287,6 +292,9 @@ namespace gr {
       // Normalize the taps
       for(unsigned int i = 0; i < difftaps.size(); i++) {
         difftaps[i] *= d_nfilters/pwr;
+        if(difftaps[i] != difftaps[i]) {
+          throw std::runtime_error("pfb_clock_sync_fff::create_diff_taps produced NaN.");
+        }
       }
     }
 
@@ -373,16 +381,20 @@ namespace gr {
       float *in = (float *) input_items[0];
       float *out = (float *) output_items[0];
 
+      if(d_updated) {
+        std::vector<float> dtaps;
+        create_diff_taps(d_updated_taps, dtaps);
+        set_taps(d_updated_taps, d_taps, d_filters);
+        set_taps(dtaps, d_dtaps, d_diff_filters);
+	d_updated = false;
+	return 0;		     // history requirements may have changed.
+      }
+
       float *err = NULL, *outrate = NULL, *outk = NULL;
       if(output_items.size() == 4) {
 	err = (float *) output_items[1];
 	outrate = (float*)output_items[2];
 	outk = (float*)output_items[3];
-      }
-
-      if(d_updated) {
-	d_updated = false;
-	return 0;		     // history requirements may have changed.
       }
 
       int i = 0, count = 0;

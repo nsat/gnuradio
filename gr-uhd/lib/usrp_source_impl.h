@@ -1,6 +1,6 @@
 /* -*- c++ -*- */
 /*
- * Copyright 2010-2013 Free Software Foundation, Inc.
+ * Copyright 2010-2016 Software Foundation, Inc.
  *
  * This file is part of GNU Radio
  *
@@ -55,7 +55,8 @@ namespace gr {
     {
     public:
       usrp_source_impl(const ::uhd::device_addr_t &device_addr,
-                       const ::uhd::stream_args_t &stream_args);
+                       const ::uhd::stream_args_t &stream_args,
+                       const bool issue_stream_cmd_on_start = true);
       ~usrp_source_impl();
 
       // Get Commands
@@ -76,6 +77,12 @@ namespace gr {
       ::uhd::sensor_value_t get_sensor(const std::string &name, size_t chan);
       std::vector<std::string> get_sensor_names(size_t chan);
       ::uhd::usrp::dboard_iface::sptr get_dboard_iface(size_t chan);
+      std::vector<std::string> get_lo_names(size_t chan);
+      const std::string get_lo_source(const std::string &name, size_t chan);
+      std::vector<std::string> get_lo_sources(const std::string &name, size_t chan);
+      bool get_lo_export_enabled(const std::string &name, size_t chan);
+      double get_lo_freq(const std::string &name, size_t chan);
+      ::uhd::freq_range_t get_lo_freq_range(const std::string &name, size_t chan);
 
       // Set Commands
       void set_subdev_spec(const std::string &spec, size_t mboard);
@@ -95,6 +102,9 @@ namespace gr {
       void set_iq_balance(const std::complex<double> &correction, size_t chan);
       void set_stream_args(const ::uhd::stream_args_t &stream_args);
       void set_start_time(const ::uhd::time_spec_t &time);
+      void set_lo_source(const std::string &src, const std::string &name = ALL_LOS, size_t chan = 0);
+      void set_lo_export_enabled(bool enabled, const std::string &name = ALL_LOS, size_t chan = 0);
+      double set_lo_freq(double freq, const std::string &name, size_t chan);
 
       void issue_stream_cmd(const ::uhd::stream_cmd_t &cmd);
       void flush(void);
@@ -106,17 +116,22 @@ namespace gr {
                gr_vector_const_void_star &input_items,
                gr_vector_void_star &output_items);
 
+      void setup_rpc();
+
     private:
       //! Like set_center_freq(), but uses _curr_freq and _curr_lo_offset
       ::uhd::tune_result_t _set_center_freq_from_internals(size_t chan);
+      void _cmd_handler_tag(const pmt::pmt_t &tag);
 
 #ifdef GR_UHD_USE_STREAM_API
       ::uhd::rx_streamer::sptr _rx_stream;
       size_t _samps_per_packet;
+      double _recv_timeout;
 #endif
       bool _tag_now;
       ::uhd::rx_metadata_t _metadata;
       pmt::pmt_t _id;
+      bool _issue_stream_cmd_on_start;
 
       //tag shadows
       double _samp_rate;

@@ -27,9 +27,9 @@
 ###################################################
  -->
 <cat>
-   <name></name> <!-- Blank for Root Name -->
+   <name>[Core]</name>
    <cat>
-           <name>Audio</name>
+      <name>Audio</name>
       <block>blocks_wavfile_source</block>
       <block>blocks_wavfile_sink</block>
    </cat>
@@ -66,6 +66,7 @@
       <block>blocks_message_strobe</block>
       <block>blocks_message_strobe_random</block>
       <block>blocks_tags_strobe</block>
+      <block>blocks_test_tag_variable_rate_ff</block>
    </cat>
    <cat>
       <name>File Operators</name>
@@ -93,9 +94,11 @@
       <block>blocks_add_const_vxx</block>
       <block>blocks_divide_xx</block>
       <block>blocks_multiply_xx</block>
+      <block>blocks_multiply_const_xx</block>
       <block>blocks_multiply_const_vxx</block>
       <block>blocks_multiply_conjugate_cc</block>
       <block>blocks_multiply_matrix_xx</block>
+      <block>blocks_multiply_by_tag_value_cc</block>
       <block>blocks_sub_xx</block>
       <block>blocks_conjugate_cc</block>
       <block>blocks_integrate_xx</block>
@@ -119,9 +122,6 @@
    </cat>
    <cat>
       <name>Message Tools</name>
-      <block>blocks_message_source</block>
-      <block>blocks_message_sink</block>
-      <block>blocks_message_burst_source</block>
       <block>blocks_message_strobe</block>
       <block>blocks_message_strobe_random</block>
       <block>blocks_message_debug</block>
@@ -144,6 +144,8 @@
       <block>blocks_null_sink</block>
       <block>blocks_copy</block>
       <block>blocks_nop</block>
+      <block>xmlrpc_server</block>
+      <block>xmlrpc_client</block>
    </cat>
    <cat>
       <name>Modulators</name>
@@ -154,6 +156,7 @@
       <name>Networking Tools</name>
       <block>blocks_tuntap_pdu</block>
       <block>blocks_socket_pdu</block>
+      <block>blocks_tcp_server_sink</block>
       <block>blocks_udp_source</block>
       <block>blocks_udp_sink</block>
    </cat>
@@ -194,13 +197,16 @@
       <block>blocks_tagged_stream_mux</block>
       <block>blocks_tagged_stream_align</block>
       <block>blocks_stream_to_tagged_stream</block>
+      <block>blocks_test_tag_variable_rate_ff</block>
    </cat>
    <cat>
       <name>Type Converters</name>
       <block>blocks_char_to_float</block>
       <block>blocks_char_to_short</block>
+      <block>blocks_complex_to_interleaved_char</block>
       <block>blocks_complex_to_interleaved_short</block>
       <block>blocks_complex_to_float</block>
+      <block>blocks_complex_to_magphase</block>
       <block>blocks_complex_to_imag</block>
       <block>blocks_complex_to_real</block>
       <block>blocks_complex_to_mag</block>
@@ -208,6 +214,7 @@
       <block>blocks_complex_to_arg</block>
       <block>blocks_float_to_char</block>
       <block>blocks_float_to_complex</block>
+      <block>blocks_magphase_to_complex</block>
       <block>blocks_float_to_int</block>
       <block>blocks_float_to_short</block>
       <block>blocks_float_to_uchar</block>

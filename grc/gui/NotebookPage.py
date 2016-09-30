@@ -26,9 +26,6 @@ from Constants import MIN_WINDOW_WIDTH, MIN_WINDOW_HEIGHT
 from DrawingArea import DrawingArea
 import os
 
-############################################################
-## Notebook Page
-############################################################
 
 class NotebookPage(gtk.HBox):
     """A page in the notebook."""
@@ -42,13 +39,13 @@ class NotebookPage(gtk.HBox):
             file_path: path to a flow graph file
         """
         self._flow_graph = flow_graph
-        self.set_proc(None)
+        self.process = None
         #import the file
         self.main_window = main_window
-        self.set_file_path(file_path)
+        self.file_path = file_path
         initial_state = flow_graph.get_parent().parse_flow_graph(file_path)
         self.state_cache = StateCache(initial_state)
-        self.set_saved(True)
+        self.saved = True
         #import the data to the flow graph
         self.get_flow_graph().import_data(initial_state)
         #initialize page gui
@@ -79,6 +76,7 @@ class NotebookPage(gtk.HBox):
         self.scrolled_window = gtk.ScrolledWindow()
         self.scrolled_window.set_size_request(MIN_WINDOW_WIDTH, MIN_WINDOW_HEIGHT)
         self.scrolled_window.set_policy(gtk.POLICY_AUTOMATIC, gtk.POLICY_AUTOMATIC)
+        self.scrolled_window.connect('key-press-event', self._handle_scroll_window_key_press)
         self.drawing_area = DrawingArea(self.get_flow_graph())
         self.scrolled_window.add_with_viewport(self.get_drawing_area())
         self.pack_start(self.scrolled_window)
@@ -88,6 +86,15 @@ class NotebookPage(gtk.HBox):
 
     def get_drawing_area(self): return self.drawing_area
 
+    def _handle_scroll_window_key_press(self, widget, event):
+        """forward Ctrl-PgUp/Down to NotebookPage (switch fg instead of horiz. scroll"""
+        is_ctrl_pg = (
+            event.state & gtk.gdk.CONTROL_MASK and
+            event.keyval in (gtk.keysyms.Page_Up, gtk.keysyms.Page_Down)
+        )
+        if is_ctrl_pg:
+            return self.get_parent().event(event)
+
     def get_generator(self):
         """
         Get the generator object for this flow graph.
@@ -95,10 +102,8 @@ class NotebookPage(gtk.HBox):
         Returns:
             generator
         """
-        return self.get_flow_graph().get_parent().get_generator()(
-            self.get_flow_graph(),
-            self.get_file_path(),
-        )
+        platform = self.get_flow_graph().get_parent()
+        return platform.Generator(self.get_flow_graph(), self.get_file_path())
 
     def _handle_button(self, button):
         """
@@ -184,8 +189,7 @@ class NotebookPage(gtk.HBox):
         Args:
             file_path: file path string
         """
-        if file_path: self.file_path = os.path.abspath(file_path)
-        else: self.file_path = ''
+        self.file_path = os.path.abspath(file_path) if file_path else ''
 
     def get_saved(self):
         """

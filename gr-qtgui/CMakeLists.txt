@@ -109,6 +109,7 @@ CPACK_COMPONENT("qtgui_swig"
 add_subdirectory(include/gnuradio/qtgui)
 add_subdirectory(lib)
 add_subdirectory(doc)
+add_subdirectory(examples/c++)
 if(ENABLE_PYTHON)
     add_subdirectory(grc)
     add_subdirectory(swig)
@@ -146,8 +147,10 @@ install(
 ########################################################################
 install(
     FILES
+    themes/plain.qss
     themes/dark.qss
     themes/alt.qss
+    themes/projector.qss
     DESTINATION ${GR_THEMES_DIR}
     COMPONENT "qtgui"
 )

@@ -64,6 +64,11 @@ namespace gr {
       virtual std::string get_subdev_spec(size_t mboard = 0) = 0;
 
       /*!
+       * Return the number of motherboards in this configuration.
+       */
+      virtual size_t get_num_mboards() = 0;
+
+      /*!
        * Set the sample rate for this connection to the USRP.
        *
        * \param rate a new rate in Sps
@@ -388,7 +393,7 @@ namespace gr {
       virtual ::uhd::time_spec_t get_time_now(size_t mboard = 0) = 0;
 
       /*!
-       * Get the time when the last pps pulse occured.
+       * Get the time when the last pps pulse occurred.
        * \param mboard the motherboard index 0 to M-1
        * \return the current usrp time
        */

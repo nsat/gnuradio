@@ -72,7 +72,8 @@ namespace gr {
         throw std::runtime_error("pfb_clock_sync_ccf: please specify a filter.\n");
 
       // Let scheduler adjust our relative_rate.
-      enable_update_rate(true);
+      //enable_update_rate(true);
+      set_tag_propagation_policy(TPP_DONT);
 
       d_nfilters = filter_size;
       d_sps = floor(sps);
@@ -108,6 +109,10 @@ namespace gr {
       set_taps(taps, d_taps, d_filters);
       set_taps(dtaps, d_dtaps, d_diff_filters);
 
+      d_old_in = 0;
+      d_new_in = 0;
+      d_last_out = 0;
+
       set_relative_rate((float)d_osps/(float)d_sps);
     }
 
@@ -133,6 +138,14 @@ namespace gr {
       for(unsigned i = 0; i < ninputs; i++)
         ninput_items_required[i] = (noutput_items + history()) * (d_sps/d_osps);
     }
+
+    void
+    pfb_clock_sync_ccf_impl::update_taps(const std::vector<float> &taps)
+    {
+      d_updated_taps = taps;
+      d_updated = true;
+    }
+
 
     /*******************************************************************
      SET FUNCTIONS
@@ -279,8 +292,6 @@ namespace gr {
 
       // Make sure there is enough output space for d_osps outputs/input.
       set_output_multiple(d_osps);
-
-      d_updated = true;
     }
 
     void
@@ -308,6 +319,9 @@ namespace gr {
       // Normalize the taps
       for(unsigned int i = 0; i < difftaps.size(); i++) {
         difftaps[i] *= d_nfilters/pwr;
+        if(difftaps[i] != difftaps[i]) {
+          throw std::runtime_error("pfb_clock_sync_ccf::create_diff_taps produced NaN.");
+        }
       }
     }
 
@@ -394,6 +408,15 @@ namespace gr {
       gr_complex *in = (gr_complex *) input_items[0];
       gr_complex *out = (gr_complex *) output_items[0];
 
+      if(d_updated) {
+        std::vector<float> dtaps;
+        create_diff_taps(d_updated_taps, dtaps);
+        set_taps(d_updated_taps, d_taps, d_filters);
+        set_taps(dtaps, d_dtaps, d_diff_filters);
+	d_updated = false;
+	return 0;		     // history requirements may have changed.
+      }
+
       float *err = NULL, *outrate = NULL, *outk = NULL;
       if(output_items.size() == 4) {
 	err = (float *) output_items[1];
@@ -401,14 +424,9 @@ namespace gr {
 	outk = (float*)output_items[3];
       }
 
-      if(d_updated) {
-	d_updated = false;
-	return 0;		     // history requirements may have changed.
-      }
-
       std::vector<tag_t> tags;
-      get_tags_in_range(tags, 0, nitems_read(0),
-                        nitems_read(0)+d_sps*noutput_items,
+      get_tags_in_window(tags, 0, 0,
+                        d_sps*noutput_items,
                         pmt::intern("time_est"));
 
       int i = 0, count = 0;
@@ -420,7 +438,8 @@ namespace gr {
           size_t offset = tags[0].offset-nitems_read(0);
           if((offset >= (size_t)count) && (offset < (size_t)(count + d_sps))) {
             float center = (float)pmt::to_double(tags[0].value);
-            d_k = (offset-count - d_sps/2.0) * d_nfilters + (M_PI*center*d_nfilters);
+            d_k = d_nfilters*(center + (offset - count));
+
             tags.erase(tags.begin());
           }
         }
@@ -445,7 +464,23 @@ namespace gr {
 
 	  out[i+d_out_idx] = d_filters[d_filtnum]->filter(&in[count+d_out_idx]);
 	  d_k = d_k + d_rate_i + d_rate_f; // update phase
-	  d_out_idx++;
+
+
+          // Manage Tags
+          std::vector<tag_t> xtags;
+          std::vector<tag_t>::iterator itags;
+          d_new_in = nitems_read(0) + count + d_out_idx + d_sps;
+          get_tags_in_range(xtags, 0, d_old_in, d_new_in);
+          for(itags = xtags.begin(); itags != xtags.end(); itags++) {
+            tag_t new_tag = *itags;
+            //new_tag.offset = d_last_out + d_taps_per_filter/(2*d_sps) - 2;
+            new_tag.offset = d_last_out + d_taps_per_filter/4 - 2;
+            add_item_tag(0, new_tag);
+          }
+          d_old_in = d_new_in;
+          d_last_out = nitems_written(0) + i + d_out_idx;
+
+          d_out_idx++;
 
 	  if(output_items.size() == 4) {
 	    err[i] = d_error;

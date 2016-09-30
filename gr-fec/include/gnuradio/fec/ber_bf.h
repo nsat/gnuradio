@@ -53,7 +53,7 @@ namespace gr {
      * berminerrors are observed and then produces a BER
      * calculation. The parameter \p ber_limit helps make sure that
      * the simulation is controlled. If the BER calculation drops
-     * bellow the \p ber_limit setting, the block will exit and simply
+     * below the \p ber_limit setting, the block will exit and simply
      * return the set limit; the real BER is therefore some amount
      * lower than this.
      *
@@ -65,6 +65,11 @@ namespace gr {
     public:
       // gr::fec::ber_bf::sptr
       typedef boost::shared_ptr<ber_bf> sptr;
+
+      /*!
+       * Get total number of errors counter value.
+       */
+      virtual long total_errors() = 0;
 
       /*!
        * Calculate the BER between two streams of data.

@@ -101,25 +101,33 @@ def encode(value):
     return gobject.markup_escape_text(valid_utf8)
 
 
-def parse_template(tmpl_str, **kwargs):
-    """
-    Parse the template string with the given args.
-    Pass in the xml encode method for pango escape chars.
+class TemplateParser(object):
+    def __init__(self):
+        self.cache = {}
 
-    Args:
-        tmpl_str: the template as a string
+    def __call__(self, tmpl_str, **kwargs):
+        """
+        Parse the template string with the given args.
+        Pass in the xml encode method for pango escape chars.
 
-    Returns:
-        a string of the parsed template
-    """
-    kwargs['encode'] = encode
-    return str(Template(tmpl_str, kwargs))
+        Args:
+            tmpl_str: the template as a string
+
+        Returns:
+            a string of the parsed template
+        """
+        kwargs['encode'] = encode
+        template = self.cache.setdefault(tmpl_str, Template.compile(tmpl_str))
+        return str(template(namespaces=kwargs))
+
+parse_template = TemplateParser()
 
 
-def align_to_grid(coor):
-    _align = lambda: int(round(x / (1.0 * CANVAS_GRID_SIZE)) * CANVAS_GRID_SIZE)
+def align_to_grid(coor, mode=round):
+    def align(value):
+        return int(mode(value / (1.0 * CANVAS_GRID_SIZE)) * CANVAS_GRID_SIZE)
     try:
-        return [_align() for x in coor]
+        return map(align, coor)
     except TypeError:
         x = coor
-        return _align()
+        return align(coor)

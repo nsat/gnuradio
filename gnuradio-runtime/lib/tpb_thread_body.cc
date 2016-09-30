@@ -37,8 +37,8 @@ namespace gr {
   {
     //std::cerr << "tpb_thread_body: " << block << std::endl;
 
-#ifdef _MSC_VER
-    #include <Windows.h>
+#if defined(_MSC_VER) || defined(__MINGW32__)
+    #include <windows.h>
     thread::set_thread_name(GetCurrentThread(), boost::str(boost::format("%s%d") % block->name() % block->unique_id()));
 #else
     thread::set_thread_name(pthread_self(), boost::str(boost::format("%s%d") % block->name() % block->unique_id()));
@@ -152,9 +152,9 @@ namespace gr {
           while(!d->d_tpb.input_changed && block->empty_handled_p()){
             boost::system_time const timeout=boost::get_system_time()+ boost::posix_time::milliseconds(250);
             if(!d->d_tpb.input_cond.timed_wait(guard, timeout)){
-                goto tpb_loop_top; // timeout occured (perform sanity checks up top)
-                }
+              goto tpb_loop_top; // timeout occurred (perform sanity checks up top)
             }
+          }
 
           // handle all pending messages
           BOOST_FOREACH(basic_block::msg_queue_map_t::value_type &i, block->msg_queue) {

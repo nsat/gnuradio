@@ -44,6 +44,7 @@ namespace gr {
         d_lengthtag(pmt::mp(lengthtagname)),
         d_have_sync(false)
     {
+      set_tag_propagation_policy(TPP_DONT);
     }
 
     tagged_stream_align_impl::~tagged_stream_align_impl()
@@ -70,7 +71,7 @@ namespace gr {
         consume_each(ncp);
         return ncp;
       } else {
-        get_tags_in_range(tags, 0, nitems_read(0), nitems_read(0) + noutput_items, d_lengthtag);
+        get_tags_in_range(tags, 0, nitems_read(0), nitems_read(0) + ninput_items[0], d_lengthtag);
         if(tags.size() > 0){
             d_have_sync = true;
             consume_each( tags[0].offset - nitems_read(0) );

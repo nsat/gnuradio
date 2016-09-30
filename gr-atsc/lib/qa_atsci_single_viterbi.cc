@@ -39,6 +39,8 @@ static const int NN          =  200;
 
 static const int MAXDIBIT    = 3;
 
+static gr::random rndm;
+
 void
 qa_atsci_single_viterbi::encode_block (unsigned char *out, unsigned char *in,
 				      unsigned int n)
@@ -61,7 +63,7 @@ qa_atsci_single_viterbi::decode_block (unsigned char *out, unsigned char *in,
 float
 qa_atsci_single_viterbi::noise ()
 {
-  return 2.0 * ((float) random () / RANDOM_MAX - 0.5);	// uniformly (-1, 1)
+  return 2.0 * (rndm.ran1() - 0.5);	// uniformly (-1, 1)
 }
 
 void
@@ -77,7 +79,7 @@ qa_atsci_single_viterbi::t0 ()
 
   // printf ("  Delay is %d.\n", delay);
 
-  srandom (27);		// reproducable sequence of "random" values
+  srandom (27);		// reproducible sequence of "random" values
 
   for (int nt = 0; nt < NTRIALS; nt++){
 
@@ -155,7 +157,7 @@ qa_atsci_single_viterbi::t1 ()
 
   // printf ("  Delay is %d.\n", delay);
 
-  srandom (1);		// reproducable sequence of "random" values
+  srandom (1);		// reproducible sequence of "random" values
 
   for (int nt = 0; nt < NTRIALS; nt++){
 
