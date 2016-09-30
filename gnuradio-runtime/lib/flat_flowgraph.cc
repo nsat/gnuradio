@@ -75,6 +75,13 @@ namespace gr {
       block->set_is_unaligned(false);
     }
 
+    setup_msg_connections();
+
+  }
+
+  void
+  flat_flowgraph::setup_msg_connections()
+  {
     // Connect message ports connetions
     for(msg_edge_viter_t i = d_msg_edges.begin(); i != d_msg_edges.end(); i++) {
       if(FLAT_FLOWGRAPH_DEBUG)
@@ -83,7 +90,9 @@ namespace gr {
           i->dst().block() % i->dst().port();
       i->src().block()->message_port_sub(i->src().port(), pmt::cons(i->dst().block()->alias_pmt(), i->dst().port()));
     }
+
   }
+  
 
   block_detail_sptr
   flat_flowgraph::allocate_block_detail(basic_block_sptr block)
@@ -323,6 +332,10 @@ namespace gr {
       block->detail()->reset_nitem_counters();
       block->detail()->clear_tags();
     }
+
+    // now setup msg connections
+    setup_msg_connections();
+
   }
 
   void
