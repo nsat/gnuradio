@@ -325,6 +325,9 @@ namespace gr {
         setup_buffer_alignment(block);
       }
 
+      // now setup msg connections
+      setup_msg_connections();
+
       // Now deal with the fact that the block details might have
       // changed numbers of inputs and outputs vs. in the old
       // flowgraph.
@@ -332,9 +335,6 @@ namespace gr {
       block->detail()->reset_nitem_counters();
       block->detail()->clear_tags();
     }
-
-    // now setup msg connections
-    setup_msg_connections();
 
   }
 
