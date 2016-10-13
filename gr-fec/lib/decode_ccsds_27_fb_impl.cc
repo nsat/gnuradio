@@ -82,6 +82,29 @@ namespace gr {
 
 	d_count++;
       }
+      
+    /* Renormalize the metrics to avoid overflow. Without this
+     * code the metrics will saturate to ~ +2^31 after a large
+     * number of symbols which breaks the decoder.
+     */
+    int smallest = d_state0[0].metric;
+    for (int i = 0; i < 64; i++)
+    {
+        if (d_state0[i].metric < smallest)
+        {
+            smallest = d_state0[i].metric;
+        }
+        if (d_state1[i].metric < smallest)
+        {
+            smallest = d_state1[i].metric;
+        }
+    }
+
+    for (int i = 0; i < 64; i++)
+    {
+        d_state0[i].metric -= smallest;
+        d_state1[i].metric -= smallest;
+    }
 
       return noutput_items;
     }
