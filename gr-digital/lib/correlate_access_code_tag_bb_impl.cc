@@ -98,36 +98,50 @@ namespace gr {
 					    gr_vector_const_void_star &input_items,
 					    gr_vector_void_star &output_items)
     {
-      const unsigned char *in = (const unsigned char*)input_items[0];
-      unsigned char *out = (unsigned char*)output_items[0];
+        const unsigned char *in = (const unsigned char*)input_items[0];
+        unsigned char *out = (unsigned char*)output_items[0];
 
-      uint64_t abs_out_sample_cnt = nitems_written(0);
+        uint64_t abs_out_sample_cnt = nitems_written(0);
 
-      for(int i = 0; i < noutput_items; i++) {
-	out[i] = in[i];
+        for(int i = 0; i < noutput_items; i++) 
+        {
+            out[i] = in[i];
 
-	// compute hamming distance between desired access code and current data
-	uint64_t wrong_bits = 0;
-	uint64_t nwrong = d_threshold+1;
+            // compute hamming distance between desired access code and current data
+            uint64_t wrong_bits = 0;
+            uint64_t nwrong = d_threshold+1;
 
-	wrong_bits  = (d_data_reg ^ d_access_code) & d_mask;
-	volk_64u_popcnt(&nwrong, wrong_bits);
+            wrong_bits  = (d_data_reg ^ d_access_code) & d_mask;
+            volk_64u_popcnt(&nwrong, wrong_bits);
 
-	// shift in new data
-	d_data_reg = (d_data_reg << 1) | (in[i] & 0x1);
-	if(nwrong <= d_threshold) {
-	  if(VERBOSE)
-	    std::cerr << "writing tag at sample " << abs_out_sample_cnt + i << std::endl;
-	  add_item_tag(0, //stream ID
-		       abs_out_sample_cnt + i, //sample
-		       d_key,      //frame info
-		       pmt::from_long(nwrong), //data (number wrong)
-		       d_me        //block src id
-		       );
-	}
-      }
+            // shift in new data
+            d_data_reg = (d_data_reg << 1) | (in[i] & 0x1);
+            if(nwrong <= d_threshold || nwrong >= (d_len - d_threshold)) 
+            {
+              
 
-      return noutput_items;
+                if(VERBOSE)
+                {
+                    std::cerr << "writing tag at sample " << abs_out_sample_cnt + i << std::endl;
+                    if (nwrong >= (d_len - d_threshold))
+                    {
+                        std::cout << "Inverted sync " << int(nwrong) << "\n";
+                    } 
+                }
+                
+                add_item_tag(0, //stream ID
+                       abs_out_sample_cnt + i, //sample
+                       d_key,      //frame info
+                       pmt::from_long(nwrong), //data (number wrong)
+                       d_me        //block src id
+                       );
+                
+                //std::cout << "Sent\n";
+            }
+        }
+
+          return noutput_items;
+
     }
 
   } /* namespace digital */
