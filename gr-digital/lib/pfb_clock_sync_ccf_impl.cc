@@ -462,6 +462,10 @@ namespace gr {
 	    count -= 1;
 	  }
 
+	  int max_count = ninput_items[0] - d_taps_per_filter - d_out_idx;
+      count = count >= max_count ? max_count : count;
+      count = count < 0 ? 0 : count;
+
 	  out[i+d_out_idx] = d_filters[d_filtnum]->filter(&in[count+d_out_idx]);
 	  d_k = d_k + d_rate_i + d_rate_f; // update phase
 
@@ -510,11 +514,12 @@ namespace gr {
         // Interpolating here to update rates for ever sps.
         for(int s = 0; s < d_sps; s++) {
           d_rate_f = d_rate_f + d_beta*d_error;
+
+          // Keep our rate within a good range
+          d_rate_f = gr::branchless_clip(d_rate_f, d_max_dev);
           d_k = d_k + d_rate_f + d_alpha*d_error;
         }
 
-	// Keep our rate within a good range
-	d_rate_f = gr::branchless_clip(d_rate_f, d_max_dev);
 
 	i+=d_osps;
 	count += (int)floor(d_sps);
