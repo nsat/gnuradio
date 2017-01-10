@@ -66,10 +66,13 @@ namespace gr {
     void
     control_loop::phase_wrap()
     {
-      while(d_phase>M_TWOPI)
-        d_phase -= M_TWOPI;
-      while(d_phase<-M_TWOPI)
-        d_phase += M_TWOPI;
+      if (d_phase > M_TWOPI) {
+        int factor = (int) (d_phase / M_TWOPI);
+        d_phase -= M_TWOPI * factor;
+      } else if (d_phase < -M_TWOPI) {
+        int factor = (int) (-d_phase / M_TWOPI);
+        d_phase += M_TWOPI * factor;
+      }
     }
 
     void

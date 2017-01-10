@@ -405,128 +405,128 @@ namespace gr {
 					  gr_vector_const_void_star &input_items,
 					  gr_vector_void_star &output_items)
     {
-      gr_complex *in = (gr_complex *) input_items[0];
-      gr_complex *out = (gr_complex *) output_items[0];
+        gr_complex *in = (gr_complex *) input_items[0];
+        gr_complex *out = (gr_complex *) output_items[0];
 
-      if(d_updated) {
-        std::vector<float> dtaps;
-        create_diff_taps(d_updated_taps, dtaps);
-        set_taps(d_updated_taps, d_taps, d_filters);
-        set_taps(dtaps, d_dtaps, d_diff_filters);
-	d_updated = false;
-	return 0;		     // history requirements may have changed.
-      }
-
-      float *err = NULL, *outrate = NULL, *outk = NULL;
-      if(output_items.size() == 4) {
-	err = (float *) output_items[1];
-	outrate = (float*)output_items[2];
-	outk = (float*)output_items[3];
-      }
-
-      std::vector<tag_t> tags;
-      get_tags_in_window(tags, 0, 0,
-                        d_sps*noutput_items,
-                        pmt::intern("time_est"));
-
-      int i = 0, count = 0;
-      float error_r, error_i;
-
-      // produce output as long as we can and there are enough input samples
-      while(i < noutput_items) {
-        if(tags.size() > 0) {
-          size_t offset = tags[0].offset-nitems_read(0);
-          if((offset >= (size_t)count) && (offset < (size_t)(count + d_sps))) {
-            float center = (float)pmt::to_double(tags[0].value);
-            d_k = d_nfilters*(center + (offset - count));
-
-            tags.erase(tags.begin());
-          }
+        if(d_updated) {
+            std::vector<float> dtaps;
+            create_diff_taps(d_updated_taps, dtaps);
+            set_taps(d_updated_taps, d_taps, d_filters);
+            set_taps(dtaps, d_dtaps, d_diff_filters);
+            d_updated = false;
+            return 0;		     // history requirements may have changed.
         }
 
-	while(d_out_idx < d_osps) {
-
-	  d_filtnum = (int)floor(d_k);
-
-	  // Keep the current filter number in [0, d_nfilters]
-	  // If we've run beyond the last filter, wrap around and go to next sample
-	  // If we've gone below 0, wrap around and go to previous sample
-	  while(d_filtnum >= d_nfilters) {
-	    d_k -= d_nfilters;
-	    d_filtnum -= d_nfilters;
-	    count += 1;
-	  }
-	  while(d_filtnum < 0) {
-	    d_k += d_nfilters;
-	    d_filtnum += d_nfilters;
-	    count -= 1;
-	  }
-
-	  int max_count = ninput_items[0] - d_taps_per_filter - d_out_idx;
-      count = count >= max_count ? max_count : count;
-      count = count < 0 ? 0 : count;
-
-	  out[i+d_out_idx] = d_filters[d_filtnum]->filter(&in[count+d_out_idx]);
-	  d_k = d_k + d_rate_i + d_rate_f; // update phase
-
-
-          // Manage Tags
-          std::vector<tag_t> xtags;
-          std::vector<tag_t>::iterator itags;
-          d_new_in = nitems_read(0) + count + d_out_idx + d_sps;
-          get_tags_in_range(xtags, 0, d_old_in, d_new_in);
-          for(itags = xtags.begin(); itags != xtags.end(); itags++) {
-            tag_t new_tag = *itags;
-            //new_tag.offset = d_last_out + d_taps_per_filter/(2*d_sps) - 2;
-            new_tag.offset = d_last_out + d_taps_per_filter/4 - 2;
-            add_item_tag(0, new_tag);
-          }
-          d_old_in = d_new_in;
-          d_last_out = nitems_written(0) + i + d_out_idx;
-
-          d_out_idx++;
-
-	  if(output_items.size() == 4) {
-	    err[i] = d_error;
-	    outrate[i] = d_rate_f;
-	    outk[i] = d_k;
-	  }
-
-	  // We've run out of output items we can create; return now.
-	  if(i+d_out_idx >= noutput_items) {
-	    consume_each(count);
-	    return i;
-	  }
-	}
-
-	// reset here; if we didn't complete a full osps samples last time,
-	// the early return would take care of it.
-	d_out_idx = 0;
-
-	// Update the phase and rate estimates for this symbol
-	gr_complex diff = d_diff_filters[d_filtnum]->filter(&in[count]);
-	error_r = out[i].real() * diff.real();
-	error_i = out[i].imag() * diff.imag();
-	d_error = (error_i + error_r) / 2.0;       // average error from I&Q channel
-
-        // Run the control loop to update the current phase (k) and
-        // tracking rate estimates based on the error value
-        // Interpolating here to update rates for ever sps.
-        for(int s = 0; s < d_sps; s++) {
-          d_rate_f = d_rate_f + d_beta*d_error;
-
-          // Keep our rate within a good range
-          d_rate_f = gr::branchless_clip(d_rate_f, d_max_dev);
-          d_k = d_k + d_rate_f + d_alpha*d_error;
+        float *err = NULL, *outrate = NULL, *outk = NULL;
+        if(output_items.size() == 4) {
+            err = (float *) output_items[1];
+            outrate = (float*)output_items[2];
+            outk = (float*)output_items[3];
         }
 
+        std::vector<tag_t> tags;
+        get_tags_in_window(tags, 0, 0,
+                d_sps*noutput_items,
+                pmt::intern("time_est"));
 
-	i+=d_osps;
-	count += (int)floor(d_sps);
-      }
+        int i = 0, count = 0;
+        float error_r, error_i;
 
-      consume_each(count);
-      return i;
+        // produce output as long as we can and there are enough input samples
+        while(i < noutput_items) {
+            if(tags.size() > 0) {
+                size_t offset = tags[0].offset-nitems_read(0);
+                if((offset >= (size_t)count) && (offset < (size_t)(count + d_sps))) {
+                    float center = (float)pmt::to_double(tags[0].value);
+                    d_k = d_nfilters*(center + (offset - count));
+
+                    tags.erase(tags.begin());
+                }
+            }
+
+            while(d_out_idx < d_osps) {
+
+                d_filtnum = (int)floor(d_k);
+
+                // Keep the current filter number in [0, d_nfilters]
+                // If we've run beyond the last filter, wrap around and go to next sample
+                // If we've gone below 0, wrap around and go to previous sample
+                if (d_filtnum >= d_nfilters) {
+                    int factor = (int) (d_filtnum / d_nfilters);
+                    d_k -= (d_nfilters * factor);
+                    d_filtnum -= (d_nfilters * factor);
+                    count += factor;
+                } else if (d_filtnum < 0) {
+                    int factor = (int) (-(d_filtnum + 1) / d_nfilters) + 1;
+                    d_k += (d_nfilters * factor);
+                    d_filtnum += (d_nfilters * factor);
+                    count -= factor;
+                }
+
+                int max_count = ninput_items[0] - d_taps_per_filter - d_out_idx;
+                count = count >= max_count ? max_count : count;
+                count = count < 0 ? 0 : count;
+
+                out[i+d_out_idx] = d_filters[d_filtnum]->filter(&in[count+d_out_idx]);
+                d_k = d_k + d_rate_i + d_rate_f; // update phase
+
+
+                // Manage Tags
+                std::vector<tag_t> xtags;
+                std::vector<tag_t>::iterator itags;
+                d_new_in = nitems_read(0) + count + d_out_idx + d_sps;
+                get_tags_in_range(xtags, 0, d_old_in, d_new_in);
+                for(itags = xtags.begin(); itags != xtags.end(); itags++) {
+                    tag_t new_tag = *itags;
+                    //new_tag.offset = d_last_out + d_taps_per_filter/(2*d_sps) - 2;
+                    new_tag.offset = d_last_out + d_taps_per_filter/4 - 2;
+                    add_item_tag(0, new_tag);
+                }
+                d_old_in = d_new_in;
+                d_last_out = nitems_written(0) + i + d_out_idx;
+
+                d_out_idx++;
+
+                if(output_items.size() == 4) {
+                    err[i] = d_error;
+                    outrate[i] = d_rate_f;
+                    outk[i] = d_k;
+                }
+
+                // We've run out of output items we can create; return now.
+                if(i+d_out_idx >= noutput_items) {
+                    consume_each(count);
+                    return i;
+                }
+            }
+
+            // reset here; if we didn't complete a full osps samples last time,
+            // the early return would take care of it.
+            d_out_idx = 0;
+
+            // Update the phase and rate estimates for this symbol
+            gr_complex diff = d_diff_filters[d_filtnum]->filter(&in[count]);
+            error_r = out[i].real() * diff.real();
+            error_i = out[i].imag() * diff.imag();
+            d_error = (error_i + error_r) / 2.0;       // average error from I&Q channel
+
+            // Run the control loop to update the current phase (k) and
+            // tracking rate estimates based on the error value
+            // Interpolating here to update rates for ever sps.
+            for(int s = 0; s < d_sps; s++) {
+                d_rate_f = d_rate_f + d_beta*d_error;
+                d_k = d_k + d_rate_f + d_alpha*d_error;
+            }
+
+            // Keep our rate within a good range
+            d_rate_f = gr::branchless_clip(d_rate_f, d_max_dev);
+
+            i+=d_osps;
+            count += (int)floor(d_sps);
+        }
+
+        consume_each(count);
+        return i;
     }
 
     void
