@@ -119,7 +119,6 @@ python-wxgtk2.8
 libboost-all-dev
 libgsl-dev
 libqwt-dev
-libsdl1.2-dev
 libzeroc-ice35-dev
 python-qt4
 python-wxgtk3.0
@@ -143,6 +142,7 @@ libcanberra-gtk-module
 libcppunit-dev
 libfftw3-dev
 libfontconfig1-dev
+libsdl1.2-dev
 libtool
 libusb-dev
 libxi-dev
