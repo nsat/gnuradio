@@ -108,67 +108,63 @@ function calculate_version(){
 function install_packages(){
     local pkgs_1204="
 libboost1.48-all-dev
+libgsl0-dev
 libqwt-dev
-python-qt4
 libzeroc-ice34-dev
+python-qt4
+python-wxgtk2.0
 "
 
     local pkgs_new="
 libboost-all-dev
+libgsl-dev
 libqwt-dev
-python-qt4
+libsdl1.2-dev
 libzeroc-ice35-dev
+python-qt4
+python-wxgtk3.0
 "
 
     local base_pkgs="
-build-essential
-git
-cmake
-git-core
+alsa-base
 autoconf
 automake
-g++
-libfftw3-dev
-libcppunit-dev
-python-cheetah
-sdcc
-guile-2.0
+build-essential
 ccache
-libgsl0-dev
-libusb-dev
-alsa-base
+cmake
+doxygen
+g++
+git
+git-core
+guile-2.0
 libasound2
 libasound2-dev
-python-scipy
-libtool
-python-dev
-swig
-pkg-config
-libfftw3-dev
+libcanberra-gtk-module
 libcppunit-dev
-libgsl0-dev
-libusb-dev
-sdcc
-libsdl1.2-dev
-python-wxgtk2.8
-python-numpy
-python-cheetah
-python-lxml
-doxygen
-libxi-dev
+libfftw3-dev
 libfontconfig1-dev
+libtool
+libusb-dev
+libxi-dev
 libxrender-dev
-sphinx-common
+libzmq-dev
+pkg-config
+python-cheetah
+python-dev
 python-gtk2
 python-lxml
-libzmq-dev
-libcanberra-gtk-module
+python-numpy
+python-scipy
+sdcc
+sphinx-common
+swig
 "
 
     local rel_pkgs="${pkgs_new}"
     lsb_release -a | grep -q 12.04 && rel_pkgs="${pkgs_1204}"
 
-sudo apt-get install ${base_pkgs} ${rel_pkgs}
+    DEBIAN_FRONTEND=noninteractive
+    sudo apt-get -y install ${base_pkgs} ${rel_pkgs}
 }
 
 function num_threads(){
