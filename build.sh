@@ -112,7 +112,7 @@ libgsl0-dev
 libqwt-dev
 libzeroc-ice34-dev
 python-qt4
-python-wxgtk2.0
+python-wxgtk2.8
 "
 
     local pkgs_new="
