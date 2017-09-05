@@ -168,7 +168,7 @@ swig
 }
 
 function num_threads(){
-    local n="$(( $(cat /proc/cpuinfo  | grep processor | wc -l) * 3))"
+    local n="$(( $(cat /proc/cpuinfo  | grep processor | wc -l)))"
     [ ${n} -lt 3 ] && echo 3 || echo ${n}
 }
 
