@@ -54,6 +54,10 @@ build from source.
 sudo apt-get install gdebi-core
 sudo gdebi gnuradi-XXX.deb
 ```
+
+See BUILD.md for full instructions for how to build gnuradio using
+Spire tools.
+
 The original directions for compilation can be found in the README.md at 
 https://github.com/gnuradio/gnuradio.
 
