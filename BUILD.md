@@ -8,11 +8,13 @@ Instructions assume starting from the user's home directory that the user is
 in the docker group. Instructions have been tested on hosts that have the 
 `testrig` ansible playbook applied.
 
+`<VERSION>` below is the latest Spire release version of gnuradio, e.g. 3.7.10.1
+
 # Building for Ubuntu 16.04
 
 ## Build Instructions
 ```
-git clone --branch spire-3.7.10.1 --recursive git@github.com:nsat/gnuradio.git
+git clone --branch spire-<VERSION> --recursive git@github.com:nsat/gnuradio.git
 docker run -v ~/gnuradio:/gnuradio -it --entrypoint bash ubuntu:16.04
 apt-get update > /dev/null
 apt-get install -y lsb-core sudo libboost-all-dev > /dev/null
@@ -36,7 +38,7 @@ gsshell docker built from the latest master.
 
 ## Build Instructions
 ```
-git clone --branch spire-3.7.10.1 --recursive git@github.com:nsat/gnuradio.git air/gnuradio
+git clone --branch spire-<VERSION> --recursive git@github.com:nsat/gnuradio.git air/gnuradio
 ./socker gsshell
 apt-get install -y --force-yes lsb libpcre3-dev=8.12-4 libpcre3=8.12-4 libglib2.0-dev libpulse-dev > /dev/null
 cd gnuradio
